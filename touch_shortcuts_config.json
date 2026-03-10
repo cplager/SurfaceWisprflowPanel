@@ -1,0 +1,13 @@
+{
+  "button_width": 12,
+  "button_height": 3,
+  "font_family": "Segoe UI",
+  "font_size": 14,
+  "window_padding": 10,
+  "button_padx": 6,
+  "button_pady": 6,
+  "topmost": true,
+  "start_hidden": false,
+  "window_x": 1200,
+  "window_y": 120
+}
