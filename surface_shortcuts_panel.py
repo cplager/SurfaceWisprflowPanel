@@ -73,6 +73,7 @@ WS_BORDER = 0x00800000
 WS_CAPTION = 0x00C00000
 WS_SYSMENU = 0x00080000
 WS_CLIPCHILDREN = 0x02000000
+WS_THICKFRAME = 0x00040000
 WS_EX_TOPMOST = 0x00000008
 WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_NOACTIVATE = 0x08000000
@@ -91,6 +92,7 @@ WM_CLOSE = 0x0010
 WM_COMMAND = 0x0111
 WM_SETFONT = 0x0030
 WM_MOUSEACTIVATE = 0x0021
+WM_GETMINMAXINFO = 0x0024
 WM_CTLCOLORBTN = 0x0135
 WM_CTLCOLOREDIT = 0x0133
 WM_CTLCOLORSTATIC = 0x0138
@@ -166,6 +168,23 @@ class RECT(ctypes.Structure):
         ("top", wintypes.LONG),
         ("right", wintypes.LONG),
         ("bottom", wintypes.LONG),
+    ]
+
+
+class POINT(ctypes.Structure):
+    _fields_ = [
+        ("x", wintypes.LONG),
+        ("y", wintypes.LONG),
+    ]
+
+
+class MINMAXINFO(ctypes.Structure):
+    _fields_ = [
+        ("ptReserved", POINT),
+        ("ptMaxSize", POINT),
+        ("ptMaxPosition", POINT),
+        ("ptMinTrackSize", POINT),
+        ("ptMaxTrackSize", POINT),
     ]
 
 
@@ -345,6 +364,7 @@ class ShortcutPanel:
         self.button_labels = {}
         self.ctrl_shift_checked = False
         self.ctrl_win_held = False
+        self.min_window_width, self.min_window_height = self._compute_window_size()
         self.window_brush = gdi32.CreateSolidBrush(0x202020)
         self.button_brush = gdi32.CreateSolidBrush(0x343434)
         self.button_active_brush = gdi32.CreateSolidBrush(0x7A4B19)
@@ -379,7 +399,7 @@ class ShortcutPanel:
             raise ctypes.WinError()
 
     def _create_window(self):
-        width, height = self._compute_window_size()
+        width, height = self.min_window_width, self.min_window_height
         x = self.config.get("window_x")
         y = self.config.get("window_y")
         if x is None:
@@ -395,7 +415,7 @@ class ShortcutPanel:
             ex_style,
             self.CLASS_NAME,
             "Touch Shortcuts",
-            WS_CAPTION | WS_SYSMENU | WS_BORDER | WS_CLIPCHILDREN,
+            WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN,
             int(x),
             int(y),
             width,
@@ -807,6 +827,11 @@ class ShortcutPanel:
             return MA_NOACTIVATE
         if msg == WM_APP_QUEUE:
             self.pump_ui_queue()
+            return 0
+        if msg == WM_GETMINMAXINFO:
+            minmax = ctypes.cast(lparam, ctypes.POINTER(MINMAXINFO)).contents
+            minmax.ptMinTrackSize.x = self.min_window_width
+            minmax.ptMinTrackSize.y = self.min_window_height
             return 0
         if msg == WM_DRAWITEM:
             self._draw_button(ctypes.cast(lparam, ctypes.POINTER(DRAWITEMSTRUCT)).contents)
