@@ -8,17 +8,27 @@ set "START_MENU_DIR=%ProgramData%\Microsoft\Windows\Start Menu\Programs\%APP_NAM
 set "UNINSTALL_KEY=HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\%APP_NAME%"
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
+set "SOURCE_DIR=%SCRIPT_DIR%"
 
 set "EXE_PATH="
-for %%F in ("%SCRIPT_DIR%\surface_touch_shortcuts_*.exe") do (
+for %%F in ("%SOURCE_DIR%\surface_touch_shortcuts_*.exe") do (
     set "EXE_PATH=%%~fF"
     goto found_exe
 )
 
+for /d %%D in ("%SCRIPT_DIR%\dist\surface_touch_shortcuts_*_package*") do (
+    set "SOURCE_DIR=%%~fD"
+    for %%F in ("%%~fD\surface_touch_shortcuts_*.exe") do (
+        set "EXE_PATH=%%~fF"
+        goto found_exe
+    )
+)
+
 :found_exe
 if not defined EXE_PATH (
-    echo Could not find surface_touch_shortcuts_*.exe next to this installer.
-    echo Build first with build_exe.bat, then run this installer from the package folder.
+    echo Could not find surface_touch_shortcuts_*.exe for install.
+    echo Run build_exe.bat first, then run this installer from the package folder,
+    echo or run this script from the repository root after a successful build.
     pause
     exit /b 1
 )
@@ -28,26 +38,26 @@ for %%F in ("%EXE_PATH%") do (
     set "EXE_BASE=%%~nF"
 )
 
-if not exist "%SCRIPT_DIR%\touch_shortcuts_config.json" (
-    echo Missing touch_shortcuts_config.json next to this installer.
+if not exist "%SOURCE_DIR%\touch_shortcuts_config.json" (
+    echo Missing touch_shortcuts_config.json in %SOURCE_DIR%.
     pause
     exit /b 1
 )
 
-if not exist "%SCRIPT_DIR%\surface_touch_shortcuts_help.html" (
-    echo Missing surface_touch_shortcuts_help.html next to this installer.
+if not exist "%SOURCE_DIR%\surface_touch_shortcuts_help.html" (
+    echo Missing surface_touch_shortcuts_help.html in %SOURCE_DIR%.
     pause
     exit /b 1
 )
 
-if not exist "%SCRIPT_DIR%\uninstall_surface_touch_shortcuts.bat" (
-    echo Missing uninstall_surface_touch_shortcuts.bat next to this installer.
+if not exist "%SOURCE_DIR%\uninstall_surface_touch_shortcuts.bat" (
+    echo Missing uninstall_surface_touch_shortcuts.bat in %SOURCE_DIR%.
     pause
     exit /b 1
 )
 
-if not exist "%SCRIPT_DIR%\run_as_admin_surface_touch_shortcuts.bat" (
-    echo Missing run_as_admin_surface_touch_shortcuts.bat next to this installer.
+if not exist "%SOURCE_DIR%\run_as_admin_surface_touch_shortcuts.bat" (
+    echo Missing run_as_admin_surface_touch_shortcuts.bat in %SOURCE_DIR%.
     pause
     exit /b 1
 )
@@ -63,10 +73,10 @@ if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if not exist "%START_MENU_DIR%" mkdir "%START_MENU_DIR%"
 
 copy "%EXE_PATH%" "%INSTALL_DIR%\" /Y >nul
-copy "%SCRIPT_DIR%\touch_shortcuts_config.json" "%INSTALL_DIR%\" /Y >nul
-copy "%SCRIPT_DIR%\surface_touch_shortcuts_help.html" "%INSTALL_DIR%\" /Y >nul
-copy "%SCRIPT_DIR%\uninstall_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
-copy "%SCRIPT_DIR%\run_as_admin_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
+copy "%SOURCE_DIR%\touch_shortcuts_config.json" "%INSTALL_DIR%\" /Y >nul
+copy "%SOURCE_DIR%\surface_touch_shortcuts_help.html" "%INSTALL_DIR%\" /Y >nul
+copy "%SOURCE_DIR%\uninstall_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
+copy "%SOURCE_DIR%\run_as_admin_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ws = New-Object -ComObject WScript.Shell; " ^

@@ -382,6 +382,7 @@ class ShortcutPanel:
         self.hwnd = None
         self.font = None
         self.icon_font = None
+        self.compact_font = None
         self.tray_icon = None
         self.ui_queue = queue.Queue()
         self.last_target_hwnd = None
@@ -501,6 +502,23 @@ class ShortcutPanel:
             0,
             0,
             500,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            font_name,
+        )
+        compact_font_height = -int(max(font_size * 1.2, font_size + self._scaled_int(3)) * dpi / 72)
+        self.compact_font = gdi32.CreateFontW(
+            compact_font_height,
+            0,
+            0,
+            0,
+            600,
             0,
             0,
             0,
@@ -670,6 +688,9 @@ class ShortcutPanel:
         if self.icon_font:
             gdi32.DeleteObject(self.icon_font)
             self.icon_font = None
+        if getattr(self, "compact_font", None):
+            gdi32.DeleteObject(self.compact_font)
+            self.compact_font = None
 
     def _apply_scale(self, new_scale: float):
         new_scale = self._clamp_scale(new_scale)
@@ -919,15 +940,15 @@ class ShortcutPanel:
             return self.button_labels.get(button_id, "")
 
         compact_labels = {
-            BUTTON_ID_CTRL_WIN: "Wispr" if self.ui_scale >= 0.65 else "W",
+            BUTTON_ID_CTRL_WIN: "Wispr" if self.ui_scale >= 0.65 else "WS",
             BUTTON_ID_CTRL_SHIFT: "C+S" if self.ui_scale >= 0.65 else "CS",
-            BUTTON_ID_CTRL_Z: "U",
-            BUTTON_ID_CTRL_Y: "R",
+            BUTTON_ID_CTRL_Z: "UN",
+            BUTTON_ID_CTRL_Y: "RE",
             BUTTON_ID_CTRL_X: "Cut",
-            BUTTON_ID_CTRL_C: "Copy" if self.ui_scale >= 0.65 else "C",
-            BUTTON_ID_CTRL_V: "Paste" if self.ui_scale >= 0.65 else "P",
-            BUTTON_ID_DELETE: "Del" if self.ui_scale >= 0.65 else "D",
-            BUTTON_ID_HIDE: "Hide" if self.ui_scale >= 0.65 else "H",
+            BUTTON_ID_CTRL_C: "Copy" if self.ui_scale >= 0.65 else "CP",
+            BUTTON_ID_CTRL_V: "Paste" if self.ui_scale >= 0.65 else "PT",
+            BUTTON_ID_DELETE: "Del" if self.ui_scale >= 0.65 else "DEL",
+            BUTTON_ID_HIDE: "Hide" if self.ui_scale >= 0.65 else "Hd",
             BUTTON_ID_HELP: "?",
             BUTTON_ID_QUIT: "X",
         }
@@ -952,13 +973,18 @@ class ShortcutPanel:
         user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.left, button_rect.top, button_rect.left + 1, button_rect.bottom)), self.border_brush)
         user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.right - 1, button_rect.top, button_rect.right, button_rect.bottom)), self.border_brush)
 
-        text_font = self.icon_font if button_id in {
+        if button_id in {
             BUTTON_ID_UP,
             BUTTON_ID_LEFT,
             BUTTON_ID_DOWN,
             BUTTON_ID_RIGHT,
             BUTTON_ID_ENTER,
-        } else self.font
+        }:
+            text_font = self.icon_font
+        elif self.ui_scale < 0.65:
+            text_font = self.compact_font
+        else:
+            text_font = self.font
         previous_font = gdi32.SelectObject(draw_item.hDC, text_font)
         gdi32.SetBkMode(draw_item.hDC, TRANSPARENT)
         gdi32.SetTextColor(draw_item.hDC, 0xFFFFFF)
@@ -1038,6 +1064,8 @@ class ShortcutPanel:
             gdi32.DeleteObject(self.font)
         if self.icon_font:
             gdi32.DeleteObject(self.icon_font)
+        if getattr(self, "compact_font", None):
+            gdi32.DeleteObject(self.compact_font)
         for brush in (
             self.window_brush,
             self.button_brush,
