@@ -307,6 +307,7 @@ class ShortcutPanel:
         self.last_target_hwnd = None
         self.buttons = {}
         self.ctrl_shift_checked = False
+        self.ctrl_win_held = False
         self.wndproc = WNDPROC(self._wndproc)
 
         self._register_window_class()
@@ -406,7 +407,7 @@ class ShortcutPanel:
         arrows_y = arrows_label_y + label_h
         hide_y = arrows_y + (button_h * 2) + pady + 12
 
-        self._make_button(BUTTON_ID_CTRL_WIN, "Ctrl+Win", padding, top_y, button_w, button_h)
+        self._make_button(BUTTON_ID_CTRL_WIN, "Ctrl+Win", padding, top_y, button_w, button_h, toggle=True)
         self._make_button(BUTTON_ID_CTRL_SHIFT, "Ctrl+Shift", padding + button_w + padx, top_y, button_w, button_h, toggle=True)
 
         edit_labels = [
@@ -542,9 +543,13 @@ class ShortcutPanel:
             user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002)
 
     def hide_to_tray(self):
+        if self.ctrl_win_held:
+            self._end_ctrl_win_hold()
         user32.ShowWindow(self.hwnd, SW_HIDE)
 
     def quit_app(self):
+        if self.ctrl_win_held:
+            self._end_ctrl_win_hold()
         if self.tray_icon:
             self.tray_icon.stop()
         user32.DestroyWindow(self.hwnd)
@@ -569,7 +574,13 @@ class ShortcutPanel:
 
     def _handle_button(self, button_id: int):
         if button_id == BUTTON_ID_CTRL_WIN:
-            self._send_to_target(self._send_ctrl_win)
+            self.ctrl_win_held = bool(
+                user32.SendMessageW(self.buttons[BUTTON_ID_CTRL_WIN], BM_GETCHECK, 0, 0) == BST_CHECKED
+            )
+            if self.ctrl_win_held:
+                self._send_to_target(self._begin_ctrl_win_hold)
+            else:
+                self._end_ctrl_win_hold()
             return
         if button_id == BUTTON_ID_CTRL_SHIFT:
             self.ctrl_shift_checked = bool(
@@ -616,6 +627,18 @@ class ShortcutPanel:
         except Exception:
             pass
         self._send_hotkey(VK_LCONTROL, VK_LWIN)
+
+    def _begin_ctrl_win_hold(self):
+        self._send_key_event(VK_LCONTROL, key_up=False)
+        time.sleep(0.01)
+        self._send_key_event(VK_LWIN, key_up=False)
+
+    def _end_ctrl_win_hold(self):
+        self._send_key_event(VK_LWIN, key_up=True)
+        time.sleep(0.01)
+        self._send_key_event(VK_LCONTROL, key_up=True)
+        self.ctrl_win_held = False
+        user32.SendMessageW(self.buttons[BUTTON_ID_CTRL_WIN], BM_SETCHECK, BST_UNCHECKED, 0)
 
     def _send_arrow(self, direction: str):
         vk_map = {
