@@ -54,7 +54,7 @@ python surface_shortcuts_panel.py
 or
 
 ```bat
-new-pixi keyboard_311 "python=3.11" keyboard pystray pillow pyinstaller 
+setup_new_pixi_env keyboard_311 "python=3.11" keyboard pystray pillow pyinstaller 
 ```
 
 ## Build a standalone EXE
