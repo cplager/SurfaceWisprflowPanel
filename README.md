@@ -121,7 +121,7 @@ Example:
 - `button_width`: approximate button width scaling
 - `button_height`: approximate button height scaling
 - `ui_scale`: proportional scale for the entire panel layout
-  Practical range in the current app is roughly `0.95` to `3.0`.
+  Practical range in the current app is roughly `0.55` to `3.0`.
 - `font_family`: button font family
 - `font_size`: button font size
 - `window_padding`: outer padding around the panel
@@ -137,6 +137,7 @@ Example:
 - `Wispr Hold` is a latch: tap once to hold `Ctrl+Win`, tap again to release it.
 - Drag-resizing scales the whole panel proportionally instead of stretching it.
 - When you finish resizing, the current `ui_scale` is saved back to `touch_shortcuts_config.json`.
+- At very small scales, a few long button labels switch to compact forms so the layout stays usable.
 - `button_width` and `button_height` are not exact pixel sizes.
 - `font_size`, `button_padx`, and `button_pady` usually make the biggest difference for touch friendliness.
 - Most shortcuts are sent with native Win32 key events. The `keyboard` package is still used as a fallback for the Wispr shortcut.

@@ -146,7 +146,7 @@ DT_SINGLELINE = 0x00000020
 ODS_SELECTED = 0x0001
 ODS_FOCUS = 0x0010
 
-MIN_UI_SCALE = 0.95
+MIN_UI_SCALE = 0.55
 MAX_UI_SCALE = 3.0
 
 WMSZ_LEFT = 1
@@ -883,6 +883,19 @@ class ShortcutPanel:
         if os.path.exists(help_path):
             os.startfile(help_path)
 
+    def _display_label(self, button_id: int) -> str:
+        if self.ui_scale >= 0.85:
+            return self.button_labels.get(button_id, "")
+
+        compact_labels = {
+            BUTTON_ID_CTRL_WIN: "Wispr",
+            BUTTON_ID_CTRL_SHIFT: "C+S",
+            BUTTON_ID_DELETE: "Del",
+            BUTTON_ID_HELP: "?",
+            BUTTON_ID_QUIT: "X",
+        }
+        return compact_labels.get(button_id, self.button_labels.get(button_id, ""))
+
     def _draw_button(self, draw_item):
         button_id = draw_item.CtlID
         button_rect = draw_item.rcItem
@@ -912,14 +925,14 @@ class ShortcutPanel:
         gdi32.SetBkMode(draw_item.hDC, TRANSPARENT)
         gdi32.SetTextColor(draw_item.hDC, 0xFFFFFF)
         text_rect = RECT(
-            button_rect.left + 4,
-            button_rect.top + 2,
-            button_rect.right - 4,
-            button_rect.bottom - 2,
+            button_rect.left + max(2, self._scaled_int(4)),
+            button_rect.top + max(1, self._scaled_int(2)),
+            button_rect.right - max(2, self._scaled_int(4)),
+            button_rect.bottom - max(1, self._scaled_int(2)),
         )
         user32.DrawTextW(
             draw_item.hDC,
-            self.button_labels.get(button_id, ""),
+            self._display_label(button_id),
             -1,
             ctypes.byref(text_rect),
             DT_CENTER | DT_VCENTER | DT_SINGLELINE,
