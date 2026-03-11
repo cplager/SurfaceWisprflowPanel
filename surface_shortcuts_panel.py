@@ -610,6 +610,11 @@ class ShortcutPanel:
             self.quit_app()
 
     def _send_ctrl_win(self):
+        try:
+            keyboard.send("ctrl+windows")
+            return
+        except Exception:
+            pass
         self._send_hotkey(VK_LCONTROL, VK_LWIN)
 
     def _send_arrow(self, direction: str):
