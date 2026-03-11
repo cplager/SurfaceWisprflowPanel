@@ -31,6 +31,7 @@ This package contains a small always-on-top Windows utility panel designed for t
 - `surface_touch_shortcuts_help.html` – local help/documentation page
 - `build_exe.bat` – Windows build script for PyInstaller
 - `install_program_files.bat` – installs the packaged app into Program Files
+- `run_as_admin_surface_touch_shortcuts.bat` – launches the installed app elevated
 - `uninstall_surface_touch_shortcuts.bat` – uninstall script copied into the install folder
 - `requirements.txt` – Python packages used
 - `README.md` – this file
@@ -71,6 +72,7 @@ The build script also creates a package folder in `dist\surface_touch_shortcuts_
 - `touch_shortcuts_config.json`
 - `surface_touch_shortcuts_help.html`
 - `install_program_files.bat`
+- `run_as_admin_surface_touch_shortcuts.bat`
 - `uninstall_surface_touch_shortcuts.bat`
 
 Run `install_program_files.bat` from that package folder to copy everything into:
@@ -88,7 +90,7 @@ No installer changes are needed between x64 and ARM64 packages.
 
 The installer also creates:
 
-- a Start Menu folder with app, help, and uninstall shortcuts
+- a Start Menu folder with normal launch, elevated launch, help, and uninstall shortcuts
 - an Installed Apps / Add or Remove Programs entry with uninstall support
 
 This app can still be packaged as a standalone executable with PyInstaller. The UI is implemented with native Win32 calls via `ctypes`, so there is no extra GUI dependency beyond standard Python plus the packages in `requirements.txt`.
@@ -152,7 +154,7 @@ Example:
 - Most shortcuts are sent with native Win32 key events. The `keyboard` package is still used as a fallback for the Wispr shortcut.
 - The `Help` button opens `surface_touch_shortcuts_help.html` from the same folder as the EXE.
 - On Windows, key simulation may work best when the app is run at the same privilege level as the target app.
-- If a target app is elevated, you may need to run this panel as administrator too.
+- If a target app is elevated, use the `Surface Touch Shortcuts (Admin)` Start Menu shortcut.
 
 ## Architecture-aware builds
 

@@ -33,6 +33,7 @@ copy "dist\surface_touch_shortcuts_%ARCH%.exe" "%PACKAGE_DIR%\" >nul
 copy "touch_shortcuts_config.json" "%PACKAGE_DIR%\" >nul
 copy "surface_touch_shortcuts_help.html" "%PACKAGE_DIR%\" >nul
 copy "install_program_files.bat" "%PACKAGE_DIR%\" >nul
+copy "run_as_admin_surface_touch_shortcuts.bat" "%PACKAGE_DIR%\" >nul
 copy "uninstall_surface_touch_shortcuts.bat" "%PACKAGE_DIR%\" >nul
 
 echo.

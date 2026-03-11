@@ -46,6 +46,12 @@ if not exist "%SCRIPT_DIR%\uninstall_surface_touch_shortcuts.bat" (
     exit /b 1
 )
 
+if not exist "%SCRIPT_DIR%\run_as_admin_surface_touch_shortcuts.bat" (
+    echo Missing run_as_admin_surface_touch_shortcuts.bat next to this installer.
+    pause
+    exit /b 1
+)
+
 net session >nul 2>nul
 if errorlevel 1 (
     echo Requesting administrator permission to install into Program Files...
@@ -60,6 +66,7 @@ copy "%EXE_PATH%" "%INSTALL_DIR%\" /Y >nul
 copy "%SCRIPT_DIR%\touch_shortcuts_config.json" "%INSTALL_DIR%\" /Y >nul
 copy "%SCRIPT_DIR%\surface_touch_shortcuts_help.html" "%INSTALL_DIR%\" /Y >nul
 copy "%SCRIPT_DIR%\uninstall_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
+copy "%SCRIPT_DIR%\run_as_admin_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ws = New-Object -ComObject WScript.Shell; " ^
@@ -73,6 +80,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$h.WorkingDirectory = '%INSTALL_DIR%'; " ^
   "$h.IconLocation = '%SystemRoot%\System32\SHELL32.dll,23'; " ^
   "$h.Save(); " ^
+  "$a = $ws.CreateShortcut('%START_MENU_DIR%\%APP_NAME% (Admin).lnk'); " ^
+  "$a.TargetPath = '%INSTALL_DIR%\run_as_admin_surface_touch_shortcuts.bat'; " ^
+  "$a.WorkingDirectory = '%INSTALL_DIR%'; " ^
+  "$a.IconLocation = '%SystemRoot%\System32\SHELL32.dll,77'; " ^
+  "$a.Save(); " ^
   "$u = $ws.CreateShortcut('%START_MENU_DIR%\Uninstall %APP_NAME%.lnk'); " ^
   "$u.TargetPath = '%INSTALL_DIR%\uninstall_surface_touch_shortcuts.bat'; " ^
   "$u.WorkingDirectory = '%INSTALL_DIR%'; " ^
@@ -99,6 +111,7 @@ echo Files:
 echo   %EXE_NAME%
 echo   touch_shortcuts_config.json
 echo   surface_touch_shortcuts_help.html
+echo   run_as_admin_surface_touch_shortcuts.bat
 echo   uninstall_surface_touch_shortcuts.bat
 echo.
 echo Installed Apps entry created for:
