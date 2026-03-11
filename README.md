@@ -129,7 +129,7 @@ Example:
 - `button_width`: approximate button width scaling
 - `button_height`: approximate button height scaling
 - `ui_scale`: proportional scale for the entire panel layout
-  Practical range in the current app is roughly `0.4` to `3.0`.
+  Practical range in the current app is roughly `0.2` to `3.0`.
 - `font_family`: button font family
 - `font_size`: button font size
 - `window_padding`: outer padding around the panel
