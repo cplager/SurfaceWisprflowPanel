@@ -145,6 +145,9 @@ DT_SINGLELINE = 0x00000020
 ODS_SELECTED = 0x0001
 ODS_FOCUS = 0x0010
 
+MIN_UI_SCALE = 0.85
+MAX_UI_SCALE = 3.0
+
 WMSZ_LEFT = 1
 WMSZ_RIGHT = 2
 WMSZ_TOP = 3
@@ -620,7 +623,7 @@ class ShortcutPanel:
         return max(1, int(round(float(value) * scale)))
 
     def _clamp_scale(self, scale: float) -> float:
-        return max(0.7, min(3.0, scale))
+        return max(MIN_UI_SCALE, min(MAX_UI_SCALE, scale))
 
     def _destroy_ui(self):
         for hwnd in list(self.buttons.values()) + list(self.static_labels):
