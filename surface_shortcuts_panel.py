@@ -157,6 +157,7 @@ BUTTON_ID_HIDE = 1012
 BUTTON_ID_QUIT = 1013
 BUTTON_ID_DELETE = 1014
 BUTTON_ID_ENTER = 1015
+BUTTON_ID_HELP = 1016
 
 
 class RECT(ctypes.Structure):
@@ -487,6 +488,7 @@ class ShortcutPanel:
         self._make_button(BUTTON_ID_ENTER, "↵", padding, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_DELETE, "Delete", padding + button_w + padx, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_HIDE, "Hide", padding + (button_w + padx) * 2, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_HELP, "Help", padding + (button_w + padx) * 3, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_QUIT, "Quit", padding + (button_w + padx) * 4, hide_y, button_w, button_h)
 
         labels = [
@@ -685,6 +687,9 @@ class ShortcutPanel:
         if button_id == BUTTON_ID_HIDE:
             self.hide_to_tray()
             return
+        if button_id == BUTTON_ID_HELP:
+            self.open_help()
+            return
         if button_id == BUTTON_ID_QUIT:
             self.quit_app()
 
@@ -748,6 +753,11 @@ class ShortcutPanel:
                 action()
         except queue.Empty:
             pass
+
+    def open_help(self):
+        help_path = os.path.join(get_base_dir(), "surface_touch_shortcuts_help.html")
+        if os.path.exists(help_path):
+            os.startfile(help_path)
 
     def _draw_button(self, draw_item):
         button_id = draw_item.CtlID

@@ -8,6 +8,7 @@ This package contains a small always-on-top Windows utility panel designed for t
 - Always-on-top mini panel
 - Dark theme with white text
 - Hides to the notification area / system tray when closed
+- In-app **Help** button that opens local HTML documentation
 - Tray menu with **Show** and **Exit**
 - Buttons for:
   - Wispr Hold toggle
@@ -19,6 +20,7 @@ This package contains a small always-on-top Windows utility panel designed for t
   - Ctrl+Y
   - Enter
   - Delete
+  - Help
   - Arrow keys
 - Config file loaded from the same folder as the script or built EXE
 
@@ -26,7 +28,10 @@ This package contains a small always-on-top Windows utility panel designed for t
 
 - `surface_shortcuts_panel.py` – main app
 - `touch_shortcuts_config.json` – sample config
+- `surface_touch_shortcuts_help.html` – local help/documentation page
 - `build_exe.bat` – Windows build script for PyInstaller
+- `install_program_files.bat` – installs the packaged app into Program Files
+- `uninstall_surface_touch_shortcuts.bat` – uninstall script copied into the install folder
 - `requirements.txt` – Python packages used
 - `README.md` – this file
 
@@ -50,10 +55,28 @@ build_exe.bat
 That will produce:
 
 ```text
-dist\surface_touch_shortcuts.exe
+dist\surface_touch_shortcuts_x64.exe
+dist\surface_touch_shortcuts_arm64.exe
 ```
 
-Keep `touch_shortcuts_config.json` in the same folder as the EXE.
+The build script also creates a package folder in `dist\surface_touch_shortcuts_<arch>_package` containing:
+
+- the EXE
+- `touch_shortcuts_config.json`
+- `surface_touch_shortcuts_help.html`
+- `install_program_files.bat`
+- `uninstall_surface_touch_shortcuts.bat`
+
+Run `install_program_files.bat` from that package folder to copy everything into:
+
+```text
+C:\Program Files\Surface Touch Shortcuts
+```
+
+The installer also creates:
+
+- a Start Menu folder with app, help, and uninstall shortcuts
+- an Installed Apps / Add or Remove Programs entry with uninstall support
 
 This app can still be packaged as a standalone executable with PyInstaller. The UI is implemented with native Win32 calls via `ctypes`, so there is no extra GUI dependency beyond standard Python plus the packages in `requirements.txt`.
 
@@ -105,6 +128,7 @@ Example:
 - `button_width` and `button_height` are not exact pixel sizes.
 - `font_size`, `button_padx`, and `button_pady` usually make the biggest difference for touch friendliness.
 - Most shortcuts are sent with native Win32 key events. The `keyboard` package is still used as a fallback for the Wispr shortcut.
+- The `Help` button opens `surface_touch_shortcuts_help.html` from the same folder as the EXE.
 - On Windows, key simulation may work best when the app is run at the same privilege level as the target app.
 - If a target app is elevated, you may need to run this panel as administrator too.
 

@@ -25,10 +25,24 @@ py -m pip install pyinstaller keyboard pystray pillow
 echo Building standalone EXE...
 py -m PyInstaller --noconsole --onefile --name surface_touch_shortcuts_%ARCH% surface_shortcuts_panel.py
 
+set "PACKAGE_DIR=dist\surface_touch_shortcuts_%ARCH%_package"
+if exist "%PACKAGE_DIR%" rmdir /s /q "%PACKAGE_DIR%"
+mkdir "%PACKAGE_DIR%"
+
+copy "dist\surface_touch_shortcuts_%ARCH%.exe" "%PACKAGE_DIR%\" >nul
+copy "touch_shortcuts_config.json" "%PACKAGE_DIR%\" >nul
+copy "surface_touch_shortcuts_help.html" "%PACKAGE_DIR%\" >nul
+copy "install_program_files.bat" "%PACKAGE_DIR%\" >nul
+copy "uninstall_surface_touch_shortcuts.bat" "%PACKAGE_DIR%\" >nul
+
 echo.
 echo Build complete.
 echo EXE location:
 echo   dist\surface_touch_shortcuts_%ARCH%.exe
 echo.
-echo Copy touch_shortcuts_config.json into the same folder as the EXE.
+echo Installable package folder:
+echo   %PACKAGE_DIR%
+echo.
+echo Run install_program_files.bat from that package folder to copy the EXE,
+echo default config, and help file into Program Files.
 pause

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Surface Touch Shortcuts Help</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #161616;
+      --panel: #222;
+      --text: #f4f4f4;
+      --muted: #b7b7b7;
+      --accent: #d18b3b;
+      --border: #3d3d3d;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #111, #1b1b1b 38%, #141414);
+      color: var(--text);
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px 56px;
+    }
+
+    h1, h2 {
+      margin: 0 0 12px;
+      font-weight: 600;
+    }
+
+    p, li {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-top: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+
+    code {
+      color: var(--text);
+      background: #101010;
+      border: 1px solid #2f2f2f;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .keys li {
+      background: #2b2b2b;
+      border: 1px solid #424242;
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Surface Touch Shortcuts</h1>
+    <p>A small always-on-top Windows panel for touch devices. It stays out of the typing focus path and gives you quick access to Wispr Flow and common editing keys.</p>
+
+    <section class="card">
+      <h2>Buttons</h2>
+      <ul class="keys">
+        <li><strong>Wispr Hold</strong><br>Tap once to hold <code>Ctrl+Win</code>. Tap again to release.</li>
+        <li><strong>Ctrl+Shift</strong><br>Toggles the modified arrow behavior.</li>
+        <li><strong>Undo / Redo</strong><br>Sends <code>Ctrl+Z</code> and <code>Ctrl+Y</code>.</li>
+        <li><strong>Cut / Copy / Paste</strong><br>Sends standard edit shortcuts.</li>
+        <li><strong>Arrow Keys</strong><br>Use the icon buttons for navigation.</li>
+        <li><strong>Enter / Delete</strong><br>Useful for quick text cleanup after selection.</li>
+        <li><strong>Hide</strong><br>Hides the panel to the system tray.</li>
+        <li><strong>Quit</strong><br>Closes the app completely.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Configuration</h2>
+      <p>The app reads <code>touch_shortcuts_config.json</code> from the same folder as the executable. Supported startup settings include button sizes, font, padding, topmost behavior, start hidden, and initial window position.</p>
+    </section>
+
+    <section class="card">
+      <h2>Install Location</h2>
+      <p>The packaged installer copies these files into <code>C:\Program Files\Surface Touch Shortcuts</code>:</p>
+      <ul>
+        <li>The executable</li>
+        <li><code>touch_shortcuts_config.json</code></li>
+        <li>This help file</li>
+      </ul>
+      <p>If you rebuild the EXE, rerun the installer to refresh the installed copy.</p>
+    </section>
+
+    <section class="card">
+      <h2>Notes</h2>
+      <p>If a target app is running elevated, this panel may also need to run elevated for key injection to work reliably. The <span class="accent">Help</span> button in the app opens this file from the installed folder.</p>
+    </section>
+  </main>
+</body>
+</html>
