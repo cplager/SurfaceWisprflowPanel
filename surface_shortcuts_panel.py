@@ -718,6 +718,13 @@ class ShortcutPanel:
         except Exception as exc:
             print(f"Could not save config: {exc}", file=sys.stderr)
 
+    def _capture_window_position(self):
+        rect = RECT()
+        user32.GetWindowRect(self.hwnd, ctypes.byref(rect))
+        self.config["window_x"] = int(rect.left)
+        self.config["window_y"] = int(rect.top)
+        self.pending_config_save = True
+
     def _enforce_scaled_rect(self, rect, edge):
         width = rect.right - rect.left
         height = rect.bottom - rect.top
@@ -1022,6 +1029,7 @@ class ShortcutPanel:
             self._sync_scale_from_window()
             return 0
         if msg == WM_EXITSIZEMOVE:
+            self._capture_window_position()
             self._save_config_if_needed()
             return 0
         if msg == WM_GETMINMAXINFO:

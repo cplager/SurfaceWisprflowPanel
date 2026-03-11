@@ -147,6 +147,7 @@ Example:
 - `Enter` has the same focus-preserving behavior as the other non-Wispr keys.
 - Drag-resizing scales the whole panel proportionally instead of stretching it.
 - When you finish resizing, the current `ui_scale` is saved back to `touch_shortcuts_config.json`.
+- When you finish moving or resizing the window, the current `window_x`, `window_y`, and `ui_scale` are saved back to `touch_shortcuts_config.json`.
 - If the configured startup position would be off-screen, the app clamps it back onto the visible display.
 - At very small scales, a few long button labels switch to compact forms so the layout stays usable.
 - At the smallest scales, several labels abbreviate further so the panel can shrink without text collisions.
