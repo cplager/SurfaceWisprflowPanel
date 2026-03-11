@@ -16,9 +16,9 @@ for %%F in ("%SOURCE_DIR%\surface_touch_shortcuts_*.exe") do (
     goto found_exe
 )
 
-for /d %%D in ("%SCRIPT_DIR%\dist\surface_touch_shortcuts_*_package*") do (
-    set "SOURCE_DIR=%%~fD"
-    for %%F in ("%%~fD\surface_touch_shortcuts_*.exe") do (
+for /f "delims=" %%D in ('dir /b /ad /o-d "%SCRIPT_DIR%\dist\surface_touch_shortcuts_*_package*" 2^>nul') do (
+    for %%F in ("%SCRIPT_DIR%\dist\%%D\surface_touch_shortcuts_*.exe") do (
+        set "SOURCE_DIR=%SCRIPT_DIR%\dist\%%D"
         set "EXE_PATH=%%~fF"
         goto found_exe
     )
@@ -72,11 +72,48 @@ if errorlevel 1 (
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if not exist "%START_MENU_DIR%" mkdir "%START_MENU_DIR%"
 
+tasklist /FI "IMAGENAME eq %EXE_NAME%" | find /I "%EXE_NAME%" >nul
+if not errorlevel 1 (
+    echo Found running %EXE_NAME% process(es). Stopping them before update...
+    taskkill /IM "%EXE_NAME%" /F >nul 2>nul
+    if errorlevel 1 (
+        echo Failed to stop running %EXE_NAME%.
+        echo Close the app and rerun this installer.
+        pause
+        exit /b 1
+    )
+)
+
 copy "%EXE_PATH%" "%INSTALL_DIR%\" /Y >nul
+if errorlevel 1 (
+    echo Failed to copy %EXE_NAME% into %INSTALL_DIR%.
+    pause
+    exit /b 1
+)
 copy "%SOURCE_DIR%\touch_shortcuts_config.json" "%INSTALL_DIR%\" /Y >nul
+if errorlevel 1 (
+    echo Failed to copy touch_shortcuts_config.json into %INSTALL_DIR%.
+    pause
+    exit /b 1
+)
 copy "%SOURCE_DIR%\surface_touch_shortcuts_help.html" "%INSTALL_DIR%\" /Y >nul
+if errorlevel 1 (
+    echo Failed to copy surface_touch_shortcuts_help.html into %INSTALL_DIR%.
+    pause
+    exit /b 1
+)
 copy "%SOURCE_DIR%\uninstall_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
+if errorlevel 1 (
+    echo Failed to copy uninstall_surface_touch_shortcuts.bat into %INSTALL_DIR%.
+    pause
+    exit /b 1
+)
 copy "%SOURCE_DIR%\run_as_admin_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
+if errorlevel 1 (
+    echo Failed to copy run_as_admin_surface_touch_shortcuts.bat into %INSTALL_DIR%.
+    pause
+    exit /b 1
+)
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ws = New-Object -ComObject WScript.Shell; " ^

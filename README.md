@@ -2,6 +2,12 @@
 
 This package contains a small always-on-top Windows utility panel designed for touch use on a Microsoft Surface.
 
+**Small Layout**<br>
+![Small Layout](images/small.png)
+
+**Large Layout**
+![Large Layout](images/large.png)
+
 ## Features
 
 - Native Windows panel that does not take typing focus when tapped
