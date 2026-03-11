@@ -24,6 +24,7 @@ except ImportError:
 
 
 DEFAULT_CONFIG = {
+    "ui_scale": 1.0,
     "button_width": 10,
     "button_height": 2,
     "font_family": "Segoe UI",
@@ -89,10 +90,12 @@ SW_RESTORE = 9
 
 WM_DESTROY = 0x0002
 WM_CLOSE = 0x0010
+WM_SIZE = 0x0005
 WM_COMMAND = 0x0111
 WM_SETFONT = 0x0030
 WM_MOUSEACTIVATE = 0x0021
 WM_GETMINMAXINFO = 0x0024
+WM_SIZING = 0x0214
 WM_CTLCOLORBTN = 0x0135
 WM_CTLCOLOREDIT = 0x0133
 WM_CTLCOLORSTATIC = 0x0138
@@ -141,6 +144,15 @@ DT_SINGLELINE = 0x00000020
 
 ODS_SELECTED = 0x0001
 ODS_FOCUS = 0x0010
+
+WMSZ_LEFT = 1
+WMSZ_RIGHT = 2
+WMSZ_TOP = 3
+WMSZ_TOPLEFT = 4
+WMSZ_TOPRIGHT = 5
+WMSZ_BOTTOM = 6
+WMSZ_BOTTOMLEFT = 7
+WMSZ_BOTTOMRIGHT = 8
 
 CW_USEDEFAULT = 0x80000000
 
@@ -362,9 +374,13 @@ class ShortcutPanel:
         self.last_target_hwnd = None
         self.buttons = {}
         self.button_labels = {}
+        self.static_labels = []
         self.ctrl_shift_checked = False
         self.ctrl_win_held = False
-        self.min_window_width, self.min_window_height = self._compute_window_size()
+        self.ui_scale = self._clamp_scale(float(self.config.get("ui_scale", 1.0)))
+        self.is_rebuilding_ui = False
+        self.base_window_width, self.base_window_height = self._compute_window_size(1.0)
+        self.min_window_width, self.min_window_height = self._compute_window_size(0.7)
         self.window_brush = gdi32.CreateSolidBrush(0x202020)
         self.button_brush = gdi32.CreateSolidBrush(0x343434)
         self.button_active_brush = gdi32.CreateSolidBrush(0x7A4B19)
@@ -399,7 +415,7 @@ class ShortcutPanel:
             raise ctypes.WinError()
 
     def _create_window(self):
-        width, height = self.min_window_width, self.min_window_height
+        width, height = self._compute_window_size(self.ui_scale)
         x = self.config.get("window_x")
         y = self.config.get("window_y")
         if x is None:
@@ -432,8 +448,9 @@ class ShortcutPanel:
             user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002)
 
     def _create_controls(self):
+        self._destroy_ui()
         font_name = str(self.config.get("font_family", "Segoe UI"))
-        font_size = int(self.config.get("font_size", 11))
+        font_size = self._scaled_int(self.config.get("font_size", 11))
         hdc = user32.GetDC(self.hwnd)
         dpi = gdi32.GetDeviceCaps(hdc, 90)
         user32.ReleaseDC(self.hwnd, hdc)
@@ -472,19 +489,19 @@ class ShortcutPanel:
             font_name,
         )
 
-        padding = int(self.config.get("window_padding", 8))
-        padx = int(self.config.get("button_padx", 4))
-        pady = int(self.config.get("button_pady", 4))
+        padding = self._scaled_int(self.config.get("window_padding", 8))
+        padx = self._scaled_int(self.config.get("button_padx", 4))
+        pady = self._scaled_int(self.config.get("button_pady", 4))
         button_w = self._button_width_px()
         button_h = self._button_height_px()
-        label_h = font_size + 10
+        label_h = self._scaled_int(int(self.config.get("font_size", 11)) + 10)
 
         top_y = padding + label_h
-        edit_label_y = top_y + button_h + pady + 8
+        edit_label_y = top_y + button_h + pady + self._scaled_int(8)
         edit_y = edit_label_y + label_h
-        arrows_label_y = edit_y + button_h + pady + 8
+        arrows_label_y = edit_y + button_h + pady + self._scaled_int(8)
         arrows_y = arrows_label_y + label_h
-        hide_y = arrows_y + (button_h * 2) + pady + 12
+        hide_y = arrows_y + (button_h * 2) + pady + self._scaled_int(12)
 
         self._make_button(BUTTON_ID_CTRL_WIN, "Wispr Hold", padding, top_y, button_w, button_h, toggle=True)
         self._make_button(BUTTON_ID_CTRL_SHIFT, "Ctrl+Shift", padding + button_w + padx, top_y, button_w, button_h, toggle=True)
@@ -559,41 +576,106 @@ class ShortcutPanel:
         )
         if hwnd:
             user32.SendMessageW(hwnd, WM_SETFONT, self.font, 1)
+            self.static_labels.append(hwnd)
 
-    def _compute_window_size(self):
-        padding = int(self.config.get("window_padding", 8))
-        pady = int(self.config.get("button_pady", 4))
-        button_h = self._button_height_px()
-        label_h = int(self.config.get("font_size", 11)) + 10
-        width = padding * 2 + self._button_width_px() * 5 + int(self.config.get("button_padx", 4)) * 4
+    def _compute_window_size(self, scale=None):
+        padding = self._scaled_int(self.config.get("window_padding", 8), scale)
+        pady = self._scaled_int(self.config.get("button_pady", 4), scale)
+        button_h = self._button_height_px(scale)
+        label_h = self._scaled_int(int(self.config.get("font_size", 11)) + 10, scale)
+        width = padding * 2 + self._button_width_px(scale) * 5 + self._scaled_int(int(self.config.get("button_padx", 4)) * 4, scale)
         height = (
             padding * 2
             + user32.GetSystemMetrics(SM_CYCAPTION)
             + label_h
             + button_h
             + pady
-            + 8
+            + self._scaled_int(8, scale)
             + label_h
             + button_h
             + pady
-            + 8
+            + self._scaled_int(8, scale)
             + label_h
             + button_h * 2
             + pady
-            + 12
+            + self._scaled_int(12, scale)
             + button_h
         )
         return width, height
 
-    def _button_width_px(self):
+    def _button_width_px(self, scale=None):
         width_units = int(self.config.get("button_width", 10))
-        font_size = int(self.config.get("font_size", 11))
-        return max(70, width_units * max(7, font_size // 2 + 2))
+        font_size = self._scaled_int(self.config.get("font_size", 11), scale)
+        scale = self.ui_scale if scale is None else scale
+        return max(self._scaled_int(70, scale), self._scaled_int(width_units * max(7, int(self.config.get("font_size", 11)) // 2 + 2), scale))
 
-    def _button_height_px(self):
+    def _button_height_px(self, scale=None):
         height_units = int(self.config.get("button_height", 2))
-        font_size = int(self.config.get("font_size", 11))
-        return max(36, height_units * (font_size + 10))
+        font_size = self._scaled_int(self.config.get("font_size", 11), scale)
+        scale = self.ui_scale if scale is None else scale
+        return max(self._scaled_int(36, scale), self._scaled_int(height_units * (int(self.config.get("font_size", 11)) + 10), scale))
+
+    def _scaled_int(self, value, scale=None):
+        scale = self.ui_scale if scale is None else scale
+        return max(1, int(round(float(value) * scale)))
+
+    def _clamp_scale(self, scale: float) -> float:
+        return max(0.7, min(3.0, scale))
+
+    def _destroy_ui(self):
+        for hwnd in list(self.buttons.values()) + list(self.static_labels):
+            if hwnd:
+                user32.DestroyWindow(hwnd)
+        self.buttons.clear()
+        self.button_labels.clear()
+        self.static_labels.clear()
+        if self.font:
+            gdi32.DeleteObject(self.font)
+            self.font = None
+        if self.icon_font:
+            gdi32.DeleteObject(self.icon_font)
+            self.icon_font = None
+
+    def _apply_scale(self, new_scale: float):
+        new_scale = self._clamp_scale(new_scale)
+        if abs(new_scale - self.ui_scale) < 0.01:
+            return
+        self.ui_scale = new_scale
+        self.config["ui_scale"] = round(self.ui_scale, 3)
+        self.is_rebuilding_ui = True
+        self._create_controls()
+        self.is_rebuilding_ui = False
+
+    def _enforce_scaled_rect(self, rect, edge):
+        width = rect.right - rect.left
+        height = rect.bottom - rect.top
+        if edge in (WMSZ_LEFT, WMSZ_RIGHT):
+            scale = width / self.base_window_width
+        elif edge in (WMSZ_TOP, WMSZ_BOTTOM):
+            scale = height / self.base_window_height
+        else:
+            scale = max(width / self.base_window_width, height / self.base_window_height)
+
+        scale = self._clamp_scale(scale)
+        target_width, target_height = self._compute_window_size(scale)
+
+        if edge in (WMSZ_LEFT, WMSZ_TOPLEFT, WMSZ_BOTTOMLEFT):
+            rect.left = rect.right - target_width
+        else:
+            rect.right = rect.left + target_width
+
+        if edge in (WMSZ_TOP, WMSZ_TOPLEFT, WMSZ_TOPRIGHT):
+            rect.top = rect.bottom - target_height
+        else:
+            rect.bottom = rect.top + target_height
+
+    def _sync_scale_from_window(self):
+        rect = RECT()
+        user32.GetWindowRect(self.hwnd, ctypes.byref(rect))
+        width = rect.right - rect.left
+        height = rect.bottom - rect.top
+        new_scale = self._clamp_scale(min(width / self.base_window_width, height / self.base_window_height))
+        self._apply_scale(new_scale)
 
     def _setup_tray(self):
         if pystray is None or Image is None or ImageDraw is None:
@@ -827,6 +909,12 @@ class ShortcutPanel:
             return MA_NOACTIVATE
         if msg == WM_APP_QUEUE:
             self.pump_ui_queue()
+            return 0
+        if msg == WM_SIZING:
+            self._enforce_scaled_rect(ctypes.cast(lparam, ctypes.POINTER(RECT)).contents, wparam)
+            return 1
+        if msg == WM_SIZE and not self.is_rebuilding_ui:
+            self._sync_scale_from_window()
             return 0
         if msg == WM_GETMINMAXINFO:
             minmax = ctypes.cast(lparam, ctypes.POINTER(MINMAXINFO)).contents

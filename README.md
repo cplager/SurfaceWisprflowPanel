@@ -101,6 +101,7 @@ Example:
 
 ```json
 {
+  "ui_scale": 1.0,
   "button_width": 12,
   "button_height": 3,
   "font_family": "Segoe UI",
@@ -119,6 +120,7 @@ Example:
 
 - `button_width`: approximate button width scaling
 - `button_height`: approximate button height scaling
+- `ui_scale`: proportional scale for the entire panel layout
 - `font_family`: button font family
 - `font_size`: button font size
 - `window_padding`: outer padding around the panel
@@ -132,6 +134,7 @@ Example:
 ## Notes
 
 - `Wispr Hold` is a latch: tap once to hold `Ctrl+Win`, tap again to release it.
+- Drag-resizing scales the whole panel proportionally instead of stretching it.
 - `button_width` and `button_height` are not exact pixel sizes.
 - `font_size`, `button_padx`, and `button_pady` usually make the biggest difference for touch friendliness.
 - Most shortcuts are sent with native Win32 key events. The `keyboard` package is still used as a fallback for the Wispr shortcut.
