@@ -1,6 +1,6 @@
 # Surface Touch Shortcuts Panel
 
-This package contains a small always-on-top Windows utility panel designed for touch use on a Microsoft Surface.
+This package contains a small, resizable always-on-top Windows utility panel designed for touch use on a Microsoft Surface to facilitate using Wispr Flow.
 
 **Small Layout**<br>
 ![Small Layout](images/small.png)
