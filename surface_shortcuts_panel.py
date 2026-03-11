@@ -146,7 +146,7 @@ DT_SINGLELINE = 0x00000020
 ODS_SELECTED = 0x0001
 ODS_FOCUS = 0x0010
 
-MIN_UI_SCALE = 0.55
+MIN_UI_SCALE = 0.4
 MAX_UI_SCALE = 3.0
 
 WMSZ_LEFT = 1
@@ -517,6 +517,18 @@ class ShortcutPanel:
 
         self._make_button(BUTTON_ID_CTRL_WIN, "Wispr Hold", padding, top_y, button_w, button_h, toggle=True)
         self._make_button(BUTTON_ID_CTRL_SHIFT, "Ctrl+Shift", padding + button_w + padx, top_y, button_w, button_h, toggle=True)
+        user32.SendMessageW(
+            self.buttons[BUTTON_ID_CTRL_WIN],
+            BM_SETCHECK,
+            BST_CHECKED if self.ctrl_win_held else BST_UNCHECKED,
+            0,
+        )
+        user32.SendMessageW(
+            self.buttons[BUTTON_ID_CTRL_SHIFT],
+            BM_SETCHECK,
+            BST_CHECKED if self.ctrl_shift_checked else BST_UNCHECKED,
+            0,
+        )
 
         edit_labels = [
             (BUTTON_ID_CTRL_Z, "Undo"),
@@ -762,8 +774,12 @@ class ShortcutPanel:
 
     def _handle_button(self, button_id: int):
         if button_id == BUTTON_ID_CTRL_WIN:
-            self.ctrl_win_held = bool(
-                user32.SendMessageW(self.buttons[BUTTON_ID_CTRL_WIN], BM_GETCHECK, 0, 0) == BST_CHECKED
+            self.ctrl_win_held = not self.ctrl_win_held
+            user32.SendMessageW(
+                self.buttons[BUTTON_ID_CTRL_WIN],
+                BM_SETCHECK,
+                BST_CHECKED if self.ctrl_win_held else BST_UNCHECKED,
+                0,
             )
             if self.ctrl_win_held:
                 self._send_to_target(self._begin_ctrl_win_hold)
@@ -771,8 +787,12 @@ class ShortcutPanel:
                 self._end_ctrl_win_hold()
             return
         if button_id == BUTTON_ID_CTRL_SHIFT:
-            self.ctrl_shift_checked = bool(
-                user32.SendMessageW(self.buttons[BUTTON_ID_CTRL_SHIFT], BM_GETCHECK, 0, 0) == BST_CHECKED
+            self.ctrl_shift_checked = not self.ctrl_shift_checked
+            user32.SendMessageW(
+                self.buttons[BUTTON_ID_CTRL_SHIFT],
+                BM_SETCHECK,
+                BST_CHECKED if self.ctrl_shift_checked else BST_UNCHECKED,
+                0,
             )
             return
         if button_id == BUTTON_ID_CTRL_Z:
@@ -888,9 +908,15 @@ class ShortcutPanel:
             return self.button_labels.get(button_id, "")
 
         compact_labels = {
-            BUTTON_ID_CTRL_WIN: "Wispr",
-            BUTTON_ID_CTRL_SHIFT: "C+S",
-            BUTTON_ID_DELETE: "Del",
+            BUTTON_ID_CTRL_WIN: "Wispr" if self.ui_scale >= 0.65 else "W",
+            BUTTON_ID_CTRL_SHIFT: "C+S" if self.ui_scale >= 0.65 else "CS",
+            BUTTON_ID_CTRL_Z: "U",
+            BUTTON_ID_CTRL_Y: "R",
+            BUTTON_ID_CTRL_X: "Cut",
+            BUTTON_ID_CTRL_C: "Copy" if self.ui_scale >= 0.65 else "C",
+            BUTTON_ID_CTRL_V: "Paste" if self.ui_scale >= 0.65 else "P",
+            BUTTON_ID_DELETE: "Del" if self.ui_scale >= 0.65 else "D",
+            BUTTON_ID_HIDE: "Hide" if self.ui_scale >= 0.65 else "H",
             BUTTON_ID_HELP: "?",
             BUTTON_ID_QUIT: "X",
         }
@@ -899,8 +925,9 @@ class ShortcutPanel:
     def _draw_button(self, draw_item):
         button_id = draw_item.CtlID
         button_rect = draw_item.rcItem
-        is_checked = button_id in {BUTTON_ID_CTRL_WIN, BUTTON_ID_CTRL_SHIFT} and bool(
-            user32.SendMessageW(self.buttons[button_id], BM_GETCHECK, 0, 0) == BST_CHECKED
+        is_checked = (
+            (button_id == BUTTON_ID_CTRL_WIN and self.ctrl_win_held)
+            or (button_id == BUTTON_ID_CTRL_SHIFT and self.ctrl_shift_checked)
         )
         is_pressed = bool(draw_item.itemState & ODS_SELECTED)
 

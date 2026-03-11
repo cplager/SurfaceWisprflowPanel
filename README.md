@@ -44,6 +44,12 @@ pip install -r requirements.txt
 python surface_shortcuts_panel.py
 ```
 
+or
+
+```bat
+new-pixi keyboard_311 "python=3.11" keyboard pystray pillow pyinstaller 
+```
+
 ## Build a standalone EXE
 
 Run:
@@ -121,7 +127,7 @@ Example:
 - `button_width`: approximate button width scaling
 - `button_height`: approximate button height scaling
 - `ui_scale`: proportional scale for the entire panel layout
-  Practical range in the current app is roughly `0.55` to `3.0`.
+  Practical range in the current app is roughly `0.4` to `3.0`.
 - `font_family`: button font family
 - `font_size`: button font size
 - `window_padding`: outer padding around the panel
@@ -138,6 +144,7 @@ Example:
 - Drag-resizing scales the whole panel proportionally instead of stretching it.
 - When you finish resizing, the current `ui_scale` is saved back to `touch_shortcuts_config.json`.
 - At very small scales, a few long button labels switch to compact forms so the layout stays usable.
+- At the smallest scales, several labels abbreviate further so the panel can shrink without text collisions.
 - `button_width` and `button_height` are not exact pixel sizes.
 - `font_size`, `button_padx`, and `button_pady` usually make the biggest difference for touch friendliness.
 - Most shortcuts are sent with native Win32 key events. The `keyboard` package is still used as a fallback for the Wispr shortcut.
