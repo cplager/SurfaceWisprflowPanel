@@ -136,6 +136,7 @@ Example:
 
 - `Wispr Hold` is a latch: tap once to hold `Ctrl+Win`, tap again to release it.
 - Drag-resizing scales the whole panel proportionally instead of stretching it.
+- When you finish resizing, the current `ui_scale` is saved back to `touch_shortcuts_config.json`.
 - `button_width` and `button_height` are not exact pixel sizes.
 - `font_size`, `button_padx`, and `button_pady` usually make the biggest difference for touch friendliness.
 - Most shortcuts are sent with native Win32 key events. The `keyboard` package is still used as a fallback for the Wispr shortcut.

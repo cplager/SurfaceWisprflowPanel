@@ -96,6 +96,7 @@ WM_SETFONT = 0x0030
 WM_MOUSEACTIVATE = 0x0021
 WM_GETMINMAXINFO = 0x0024
 WM_SIZING = 0x0214
+WM_EXITSIZEMOVE = 0x0232
 WM_CTLCOLORBTN = 0x0135
 WM_CTLCOLOREDIT = 0x0133
 WM_CTLCOLORSTATIC = 0x0138
@@ -355,6 +356,13 @@ def load_config() -> dict:
     return config
 
 
+def save_config(config: dict):
+    config_path = os.path.join(get_base_dir(), "touch_shortcuts_config.json")
+    with open(config_path, "w", encoding="utf-8") as handle:
+        json.dump(config, handle, indent=2)
+        handle.write("\n")
+
+
 def loword(value: int) -> int:
     return value & 0xFFFF
 
@@ -382,6 +390,7 @@ class ShortcutPanel:
         self.ctrl_win_held = False
         self.ui_scale = self._clamp_scale(float(self.config.get("ui_scale", 1.0)))
         self.is_rebuilding_ui = False
+        self.pending_config_save = False
         self.base_window_width, self.base_window_height = self._compute_window_size(1.0)
         self.min_window_width, self.min_window_height = self._compute_window_size(0.7)
         self.window_brush = gdi32.CreateSolidBrush(0x202020)
@@ -645,9 +654,19 @@ class ShortcutPanel:
             return
         self.ui_scale = new_scale
         self.config["ui_scale"] = round(self.ui_scale, 3)
+        self.pending_config_save = True
         self.is_rebuilding_ui = True
         self._create_controls()
         self.is_rebuilding_ui = False
+
+    def _save_config_if_needed(self):
+        if not self.pending_config_save:
+            return
+        try:
+            save_config(self.config)
+            self.pending_config_save = False
+        except Exception as exc:
+            print(f"Could not save config: {exc}", file=sys.stderr)
 
     def _enforce_scaled_rect(self, rect, edge):
         width = rect.right - rect.left
@@ -918,6 +937,9 @@ class ShortcutPanel:
             return 1
         if msg == WM_SIZE and not self.is_rebuilding_ui:
             self._sync_scale_from_window()
+            return 0
+        if msg == WM_EXITSIZEMOVE:
+            self._save_config_if_needed()
             return 0
         if msg == WM_GETMINMAXINFO:
             minmax = ctypes.cast(lparam, ctypes.POINTER(MINMAXINFO)).contents
