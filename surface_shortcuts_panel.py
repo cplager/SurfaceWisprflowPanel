@@ -41,6 +41,17 @@ user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
 kernel32 = ctypes.windll.kernel32
 
+if not hasattr(wintypes, "LRESULT"):
+    wintypes.LRESULT = ctypes.c_ssize_t
+if not hasattr(wintypes, "HCURSOR"):
+    wintypes.HCURSOR = wintypes.HANDLE
+if not hasattr(wintypes, "HBRUSH"):
+    wintypes.HBRUSH = wintypes.HANDLE
+if not hasattr(wintypes, "HGDIOBJ"):
+    wintypes.HGDIOBJ = wintypes.HANDLE
+if not hasattr(wintypes, "HFONT"):
+    wintypes.HFONT = wintypes.HANDLE
+
 WNDPROC = ctypes.WINFUNCTYPE(
     wintypes.LRESULT,
     wintypes.HWND,
