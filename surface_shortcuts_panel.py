@@ -191,27 +191,6 @@ class WNDCLASSW(ctypes.Structure):
     ]
 
 
-class KEYBDINPUT(ctypes.Structure):
-    _fields_ = [
-        ("wVk", wintypes.WORD),
-        ("wScan", wintypes.WORD),
-        ("dwFlags", wintypes.DWORD),
-        ("time", wintypes.DWORD),
-        ("dwExtraInfo", wintypes.ULONG_PTR),
-    ]
-
-
-class _INPUTUNION(ctypes.Union):
-    _fields_ = [("ki", KEYBDINPUT)]
-
-
-class INPUT(ctypes.Structure):
-    _fields_ = [
-        ("type", wintypes.DWORD),
-        ("union", _INPUTUNION),
-    ]
-
-
 user32.DefWindowProcW.restype = wintypes.LRESULT
 user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
@@ -257,8 +236,7 @@ user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
 user32.GetSystemMetrics.argtypes = [ctypes.c_int]
 user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 user32.DestroyWindow.argtypes = [wintypes.HWND]
-user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
-user32.SendInput.restype = wintypes.UINT
+user32.keybd_event.argtypes = [wintypes.BYTE, wintypes.BYTE, wintypes.DWORD, wintypes.ULONG_PTR]
 gdi32.CreateFontW.restype = wintypes.HFONT
 gdi32.CreateFontW.argtypes = [
     ctypes.c_int,
@@ -310,21 +288,6 @@ def loword(value: int) -> int:
 
 def hiword(value: int) -> int:
     return (value >> 16) & 0xFFFF
-
-
-def make_key_input(virtual_key: int, flags: int = 0) -> INPUT:
-    return INPUT(
-        type=INPUT_KEYBOARD,
-        union=_INPUTUNION(
-            ki=KEYBDINPUT(
-                wVk=virtual_key,
-                wScan=0,
-                dwFlags=flags,
-                time=0,
-                dwExtraInfo=0,
-            )
-        ),
-    )
 
 
 class ShortcutPanel:
@@ -662,16 +625,10 @@ class ShortcutPanel:
         self._send_to_target(action)
 
     def _send_hotkey(self, *virtual_keys: int):
-        inputs = []
         for virtual_key in virtual_keys:
-            inputs.append(make_key_input(virtual_key))
+            user32.keybd_event(virtual_key, 0, 0, 0)
         for virtual_key in reversed(virtual_keys):
-            inputs.append(make_key_input(virtual_key, KEYEVENTF_KEYUP))
-
-        input_array = (INPUT * len(inputs))(*inputs)
-        sent = user32.SendInput(len(inputs), input_array, ctypes.sizeof(INPUT))
-        if sent != len(inputs):
-            raise ctypes.WinError()
+            user32.keybd_event(virtual_key, 0, KEYEVENTF_KEYUP, 0)
 
     def pump_ui_queue(self):
         try:
