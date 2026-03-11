@@ -79,6 +79,7 @@ WS_EX_NOACTIVATE = 0x08000000
 
 BS_PUSHBUTTON = 0x00000000
 BS_AUTOCHECKBOX = 0x00000003
+BS_OWNERDRAW = 0x0000000B
 BS_PUSHLIKE = 0x00001000
 
 SW_HIDE = 0
@@ -93,6 +94,7 @@ WM_MOUSEACTIVATE = 0x0021
 WM_CTLCOLORBTN = 0x0135
 WM_CTLCOLOREDIT = 0x0133
 WM_CTLCOLORSTATIC = 0x0138
+WM_DRAWITEM = 0x002B
 WM_APP = 0x8000
 WM_APP_QUEUE = WM_APP + 1
 
@@ -105,6 +107,7 @@ BST_CHECKED = 1
 COLOR_WINDOW = 5
 COLOR_BTNFACE = 15
 MA_NOACTIVATE = 3
+TRANSPARENT = 1
 
 INPUT_KEYBOARD = 1
 KEYEVENTF_EXTENDEDKEY = 0x0001
@@ -113,6 +116,8 @@ KEYEVENTF_KEYUP = 0x0002
 VK_LCONTROL = 0xA2
 VK_LSHIFT = 0xA0
 VK_LWIN = 0x5B
+VK_RETURN = 0x0D
+VK_DELETE = 0x2E
 VK_LEFT = 0x25
 VK_UP = 0x26
 VK_RIGHT = 0x27
@@ -127,6 +132,13 @@ DT_CALCRECT = 0x00000400
 DEFAULT_GUI_FONT = 17
 MAPVK_VK_TO_VSC = 0
 SM_CYCAPTION = 4
+
+DT_CENTER = 0x00000001
+DT_VCENTER = 0x00000004
+DT_SINGLELINE = 0x00000020
+
+ODS_SELECTED = 0x0001
+ODS_FOCUS = 0x0010
 
 CW_USEDEFAULT = 0x80000000
 
@@ -143,6 +155,8 @@ BUTTON_ID_DOWN = 1010
 BUTTON_ID_RIGHT = 1011
 BUTTON_ID_HIDE = 1012
 BUTTON_ID_QUIT = 1013
+BUTTON_ID_DELETE = 1014
+BUTTON_ID_ENTER = 1015
 
 
 class RECT(ctypes.Structure):
@@ -190,6 +204,20 @@ class WNDCLASSW(ctypes.Structure):
         ("hbrBackground", wintypes.HBRUSH),
         ("lpszMenuName", wintypes.LPCWSTR),
         ("lpszClassName", wintypes.LPCWSTR),
+    ]
+
+
+class DRAWITEMSTRUCT(ctypes.Structure):
+    _fields_ = [
+        ("CtlType", wintypes.UINT),
+        ("CtlID", wintypes.UINT),
+        ("itemID", wintypes.UINT),
+        ("itemAction", wintypes.UINT),
+        ("itemState", wintypes.UINT),
+        ("hwndItem", wintypes.HWND),
+        ("hDC", wintypes.HDC),
+        ("rcItem", RECT),
+        ("itemData", wintypes.ULONG_PTR),
     ]
 
 
@@ -241,6 +269,8 @@ user32.DestroyWindow.argtypes = [wintypes.HWND]
 user32.keybd_event.argtypes = [wintypes.BYTE, wintypes.BYTE, wintypes.DWORD, wintypes.ULONG_PTR]
 user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
 user32.MapVirtualKeyW.restype = wintypes.UINT
+user32.FillRect.argtypes = [wintypes.HDC, ctypes.POINTER(RECT), wintypes.HBRUSH]
+user32.DrawTextW.argtypes = [wintypes.HDC, wintypes.LPCWSTR, ctypes.c_int, ctypes.POINTER(RECT), wintypes.UINT]
 gdi32.CreateFontW.restype = wintypes.HFONT
 gdi32.CreateFontW.argtypes = [
     ctypes.c_int,
@@ -258,8 +288,12 @@ gdi32.CreateFontW.argtypes = [
     wintypes.DWORD,
     wintypes.LPCWSTR,
 ]
+gdi32.CreateSolidBrush.argtypes = [wintypes.COLORREF]
+gdi32.CreateSolidBrush.restype = wintypes.HBRUSH
 gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
 gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
+gdi32.SetTextColor.argtypes = [wintypes.HDC, wintypes.COLORREF]
+gdi32.SetBkMode.argtypes = [wintypes.HDC, ctypes.c_int]
 
 
 def get_base_dir() -> str:
@@ -306,8 +340,14 @@ class ShortcutPanel:
         self.ui_queue = queue.Queue()
         self.last_target_hwnd = None
         self.buttons = {}
+        self.button_labels = {}
         self.ctrl_shift_checked = False
         self.ctrl_win_held = False
+        self.window_brush = gdi32.CreateSolidBrush(0x202020)
+        self.button_brush = gdi32.CreateSolidBrush(0x343434)
+        self.button_active_brush = gdi32.CreateSolidBrush(0x7A4B19)
+        self.button_pressed_brush = gdi32.CreateSolidBrush(0x4A4A4A)
+        self.border_brush = gdi32.CreateSolidBrush(0x5A5A5A)
         self.wndproc = WNDPROC(self._wndproc)
 
         self._register_window_class()
@@ -329,7 +369,7 @@ class ShortcutPanel:
         wnd_class.hInstance = self.hinstance
         wnd_class.hIcon = None
         wnd_class.hCursor = user32.LoadCursorW(None, ctypes.c_wchar_p(32512))
-        wnd_class.hbrBackground = user32.GetSysColorBrush(COLOR_WINDOW)
+        wnd_class.hbrBackground = self.window_brush
         wnd_class.lpszMenuName = None
         wnd_class.lpszClassName = self.CLASS_NAME
         atom = user32.RegisterClassW(ctypes.byref(wnd_class))
@@ -407,7 +447,7 @@ class ShortcutPanel:
         arrows_y = arrows_label_y + label_h
         hide_y = arrows_y + (button_h * 2) + pady + 12
 
-        self._make_button(BUTTON_ID_CTRL_WIN, "Ctrl+Win", padding, top_y, button_w, button_h, toggle=True)
+        self._make_button(BUTTON_ID_CTRL_WIN, "Wispr Hold", padding, top_y, button_w, button_h, toggle=True)
         self._make_button(BUTTON_ID_CTRL_SHIFT, "Ctrl+Shift", padding + button_w + padx, top_y, button_w, button_h, toggle=True)
 
         edit_labels = [
@@ -426,8 +466,10 @@ class ShortcutPanel:
         self._make_button(BUTTON_ID_LEFT, "Left", padding, arrows_y + button_h + pady, button_w, button_h)
         self._make_button(BUTTON_ID_DOWN, "Down", arrow_x, arrows_y + button_h + pady, button_w, button_h)
         self._make_button(BUTTON_ID_RIGHT, "Right", padding + (button_w + padx) * 2, arrows_y + button_h + pady, button_w, button_h)
-        self._make_button(BUTTON_ID_HIDE, "Hide", padding, hide_y, button_w, button_h)
-        self._make_button(BUTTON_ID_QUIT, "Quit", padding + button_w + padx, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_ENTER, "Enter", padding, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_DELETE, "Delete", padding + button_w + padx, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_HIDE, "Hide", padding + (button_w + padx) * 2, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_QUIT, "Quit", padding + (button_w + padx) * 3, hide_y, button_w, button_h)
 
         labels = [
             ("Edit", padding, edit_label_y),
@@ -438,6 +480,7 @@ class ShortcutPanel:
 
     def _make_button(self, button_id: int, text: str, x: int, y: int, width: int, height: int, toggle: bool = False):
         style = WS_CHILD | WS_VISIBLE
+        style |= BS_OWNERDRAW
         style |= BS_AUTOCHECKBOX | BS_PUSHLIKE if toggle else BS_PUSHBUTTON
         hwnd = user32.CreateWindowExW(
             0,
@@ -457,6 +500,7 @@ class ShortcutPanel:
             raise ctypes.WinError()
         user32.SendMessageW(hwnd, WM_SETFONT, self.font, 1)
         self.buttons[button_id] = hwnd
+        self.button_labels[button_id] = text
 
     def _make_static(self, text: str, x: int, y: int, width: int, height: int):
         hwnd = user32.CreateWindowExW(
@@ -614,6 +658,12 @@ class ShortcutPanel:
         if button_id == BUTTON_ID_RIGHT:
             self._send_arrow("right")
             return
+        if button_id == BUTTON_ID_ENTER:
+            self._send_to_target(lambda: self._send_hotkey(VK_RETURN))
+            return
+        if button_id == BUTTON_ID_DELETE:
+            self._send_to_target(lambda: self._send_hotkey(VK_DELETE))
+            return
         if button_id == BUTTON_ID_HIDE:
             self.hide_to_tray()
             return
@@ -667,7 +717,7 @@ class ShortcutPanel:
     def _send_key_event(self, virtual_key: int, key_up: bool):
         scan_code = user32.MapVirtualKeyW(virtual_key, MAPVK_VK_TO_VSC)
         flags = 0
-        if virtual_key in {VK_LWIN, VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN}:
+        if virtual_key in {VK_LWIN, VK_DELETE, VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN}:
             flags |= KEYEVENTF_EXTENDEDKEY
         if key_up:
             flags |= KEYEVENTF_KEYUP
@@ -681,12 +731,49 @@ class ShortcutPanel:
         except queue.Empty:
             pass
 
+    def _draw_button(self, draw_item):
+        button_id = draw_item.CtlID
+        button_rect = draw_item.rcItem
+        is_checked = button_id in {BUTTON_ID_CTRL_WIN, BUTTON_ID_CTRL_SHIFT} and bool(
+            user32.SendMessageW(self.buttons[button_id], BM_GETCHECK, 0, 0) == BST_CHECKED
+        )
+        is_pressed = bool(draw_item.itemState & ODS_SELECTED)
+
+        brush = self.button_active_brush if is_checked else self.button_brush
+        if is_pressed:
+            brush = self.button_pressed_brush
+
+        user32.FillRect(draw_item.hDC, ctypes.byref(button_rect), brush)
+        user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.left, button_rect.top, button_rect.right, button_rect.top + 1)), self.border_brush)
+        user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.left, button_rect.bottom - 1, button_rect.right, button_rect.bottom)), self.border_brush)
+        user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.left, button_rect.top, button_rect.left + 1, button_rect.bottom)), self.border_brush)
+        user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.right - 1, button_rect.top, button_rect.right, button_rect.bottom)), self.border_brush)
+
+        gdi32.SetBkMode(draw_item.hDC, TRANSPARENT)
+        gdi32.SetTextColor(draw_item.hDC, 0xFFFFFF)
+        text_rect = RECT(
+            button_rect.left + 4,
+            button_rect.top + 2,
+            button_rect.right - 4,
+            button_rect.bottom - 2,
+        )
+        user32.DrawTextW(
+            draw_item.hDC,
+            self.button_labels.get(button_id, ""),
+            -1,
+            ctypes.byref(text_rect),
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE,
+        )
+
     def _wndproc(self, hwnd, msg, wparam, lparam):
         if msg == WM_MOUSEACTIVATE:
             return MA_NOACTIVATE
         if msg == WM_APP_QUEUE:
             self.pump_ui_queue()
             return 0
+        if msg == WM_DRAWITEM:
+            self._draw_button(ctypes.cast(lparam, ctypes.POINTER(DRAWITEMSTRUCT)).contents)
+            return 1
         if msg == WM_COMMAND:
             if hiword(wparam) == BN_CLICKED:
                 try:
@@ -700,8 +787,12 @@ class ShortcutPanel:
         if msg == WM_DESTROY:
             user32.PostQuitMessage(0)
             return 0
-        if msg in (WM_CTLCOLORBTN, WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT):
-            return user32.GetSysColorBrush(COLOR_BTNFACE if msg == WM_CTLCOLORBTN else COLOR_WINDOW)
+        if msg == WM_CTLCOLORSTATIC:
+            gdi32.SetTextColor(wparam, 0xFFFFFF)
+            gdi32.SetBkMode(wparam, TRANSPARENT)
+            return self.window_brush
+        if msg in (WM_CTLCOLORBTN, WM_CTLCOLOREDIT):
+            return self.window_brush
         return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
     def run(self):
@@ -719,6 +810,15 @@ class ShortcutPanel:
 
         if self.font:
             gdi32.DeleteObject(self.font)
+        for brush in (
+            self.window_brush,
+            self.button_brush,
+            self.button_active_brush,
+            self.button_pressed_brush,
+            self.border_brush,
+        ):
+            if brush:
+                gdi32.DeleteObject(brush)
 
 
 def main():
