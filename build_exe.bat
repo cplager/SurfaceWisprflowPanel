@@ -1,9 +1,17 @@
 @echo off
 setlocal
 
+set "PY_CMD="
 where py >nul 2>nul
-if errorlevel 1 (
-    echo Python launcher not found. Install Python, then rerun this script.
+if not errorlevel 1 set "PY_CMD=py"
+
+if not defined PY_CMD (
+    where python >nul 2>nul
+    if not errorlevel 1 set "PY_CMD=python"
+)
+
+if not defined PY_CMD (
+    echo Python not found. Install Python, then rerun this script.
     pause
     exit /b 1
 )
@@ -17,24 +25,87 @@ if /I "%PROCESSOR_ARCHITEW6432%"=="ARM64" set "ARCH=arm64"
 if /I "%PROCESSOR_ARCHITEW6432%"=="AMD64" set "ARCH=x64"
 
 echo Detected build architecture: %ARCH%
+echo Using Python command: %PY_CMD%
 
 echo Installing/upgrading build dependencies...
-py -m pip install --upgrade pip
-py -m pip install pyinstaller keyboard pystray pillow
+%PY_CMD% -m pip --version >nul 2>nul
+if errorlevel 1 (
+    echo WARNING: pip is not available in this environment. Skipping dependency installation.
+) else (
+    %PY_CMD% -m pip install --upgrade pip
+    if errorlevel 1 (
+        echo Failed to upgrade pip.
+        pause
+        exit /b 1
+    )
+    %PY_CMD% -m pip install pyinstaller keyboard pystray pillow
+    if errorlevel 1 (
+        echo Failed to install build dependencies.
+        pause
+        exit /b 1
+    )
+)
 
 echo Building standalone EXE...
-py -m PyInstaller --noconsole --onefile --name surface_touch_shortcuts_%ARCH% surface_shortcuts_panel.py
+%PY_CMD% -m PyInstaller --noconsole --onefile --name surface_touch_shortcuts_%ARCH% surface_shortcuts_panel.py
+if errorlevel 1 (
+    echo PyInstaller build failed.
+    pause
+    exit /b 1
+)
 
-set "PACKAGE_DIR=dist\surface_touch_shortcuts_%ARCH%_package"
-if exist "%PACKAGE_DIR%" rmdir /s /q "%PACKAGE_DIR%"
+set "PACKAGE_BASE=dist\surface_touch_shortcuts_%ARCH%_package"
+set "PACKAGE_DIR=%PACKAGE_BASE%"
+set /a PACKAGE_IDX=1
+:find_package_dir
+if exist "%PACKAGE_DIR%" (
+    set "PACKAGE_DIR=%PACKAGE_BASE%_%PACKAGE_IDX%"
+    set /a PACKAGE_IDX+=1
+    goto :find_package_dir
+)
 mkdir "%PACKAGE_DIR%"
+if errorlevel 1 (
+    echo Failed to create package directory: %PACKAGE_DIR%
+    pause
+    exit /b 1
+)
 
 copy "dist\surface_touch_shortcuts_%ARCH%.exe" "%PACKAGE_DIR%\" >nul
+if errorlevel 1 (
+    echo Failed to copy EXE into package directory.
+    pause
+    exit /b 1
+)
 copy "touch_shortcuts_config.json" "%PACKAGE_DIR%\" >nul
+if errorlevel 1 (
+    echo Failed to copy touch_shortcuts_config.json.
+    pause
+    exit /b 1
+)
 copy "surface_touch_shortcuts_help.html" "%PACKAGE_DIR%\" >nul
+if errorlevel 1 (
+    echo Failed to copy surface_touch_shortcuts_help.html.
+    pause
+    exit /b 1
+)
 copy "install_program_files.bat" "%PACKAGE_DIR%\" >nul
+if errorlevel 1 (
+    echo Failed to copy install_program_files.bat.
+    pause
+    exit /b 1
+)
 copy "run_as_admin_surface_touch_shortcuts.bat" "%PACKAGE_DIR%\" >nul
+if errorlevel 1 (
+    echo Failed to copy run_as_admin_surface_touch_shortcuts.bat.
+    pause
+    exit /b 1
+)
 copy "uninstall_surface_touch_shortcuts.bat" "%PACKAGE_DIR%\" >nul
+if errorlevel 1 (
+    echo Failed to copy uninstall_surface_touch_shortcuts.bat.
+    pause
+    exit /b 1
+)
 
 echo.
 echo Build complete.
