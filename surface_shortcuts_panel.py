@@ -5,6 +5,7 @@ import os
 import queue
 import sys
 import threading
+import time
 
 try:
     import keyboard
@@ -43,6 +44,8 @@ kernel32 = ctypes.windll.kernel32
 
 if not hasattr(wintypes, "LRESULT"):
     wintypes.LRESULT = ctypes.c_ssize_t
+if not hasattr(wintypes, "ULONG_PTR"):
+    wintypes.ULONG_PTR = ctypes.c_size_t
 if not hasattr(wintypes, "HCURSOR"):
     wintypes.HCURSOR = wintypes.HANDLE
 if not hasattr(wintypes, "HICON"):
@@ -103,6 +106,22 @@ COLOR_WINDOW = 5
 COLOR_BTNFACE = 15
 MA_NOACTIVATE = 3
 
+INPUT_KEYBOARD = 1
+KEYEVENTF_KEYUP = 0x0002
+
+VK_CONTROL = 0x11
+VK_SHIFT = 0x10
+VK_LWIN = 0x5B
+VK_LEFT = 0x25
+VK_UP = 0x26
+VK_RIGHT = 0x27
+VK_DOWN = 0x28
+VK_X = 0x58
+VK_C = 0x43
+VK_V = 0x56
+VK_Y = 0x59
+VK_Z = 0x5A
+
 DT_CALCRECT = 0x00000400
 DEFAULT_GUI_FONT = 17
 SM_CYCAPTION = 4
@@ -121,6 +140,7 @@ BUTTON_ID_LEFT = 1009
 BUTTON_ID_DOWN = 1010
 BUTTON_ID_RIGHT = 1011
 BUTTON_ID_HIDE = 1012
+BUTTON_ID_QUIT = 1013
 
 
 class RECT(ctypes.Structure):
@@ -171,6 +191,27 @@ class WNDCLASSW(ctypes.Structure):
     ]
 
 
+class KEYBDINPUT(ctypes.Structure):
+    _fields_ = [
+        ("wVk", wintypes.WORD),
+        ("wScan", wintypes.WORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", wintypes.ULONG_PTR),
+    ]
+
+
+class _INPUTUNION(ctypes.Union):
+    _fields_ = [("ki", KEYBDINPUT)]
+
+
+class INPUT(ctypes.Structure):
+    _fields_ = [
+        ("type", wintypes.DWORD),
+        ("union", _INPUTUNION),
+    ]
+
+
 user32.DefWindowProcW.restype = wintypes.LRESULT
 user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
@@ -216,6 +257,8 @@ user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
 user32.GetSystemMetrics.argtypes = [ctypes.c_int]
 user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 user32.DestroyWindow.argtypes = [wintypes.HWND]
+user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
+user32.SendInput.restype = wintypes.UINT
 gdi32.CreateFontW.restype = wintypes.HFONT
 gdi32.CreateFontW.argtypes = [
     ctypes.c_int,
@@ -267,6 +310,21 @@ def loword(value: int) -> int:
 
 def hiword(value: int) -> int:
     return (value >> 16) & 0xFFFF
+
+
+def make_key_input(virtual_key: int, flags: int = 0) -> INPUT:
+    return INPUT(
+        type=INPUT_KEYBOARD,
+        union=_INPUTUNION(
+            ki=KEYBDINPUT(
+                wVk=virtual_key,
+                wScan=0,
+                dwFlags=flags,
+                time=0,
+                dwExtraInfo=0,
+            )
+        ),
+    )
 
 
 class ShortcutPanel:
@@ -401,6 +459,7 @@ class ShortcutPanel:
         self._make_button(BUTTON_ID_DOWN, "Down", arrow_x, arrows_y + button_h + pady, button_w, button_h)
         self._make_button(BUTTON_ID_RIGHT, "Right", padding + (button_w + padx) * 2, arrows_y + button_h + pady, button_w, button_h)
         self._make_button(BUTTON_ID_HIDE, "Hide", padding, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_QUIT, "Quit", padding + button_w + padx, hide_y, button_w, button_h)
 
         labels = [
             ("Edit", padding, edit_label_y),
@@ -538,6 +597,7 @@ class ShortcutPanel:
 
     def _send_to_target(self, action):
         self._restore_target_window()
+        time.sleep(0.03)
         action()
 
     def _handle_button(self, button_id: int):
@@ -550,19 +610,19 @@ class ShortcutPanel:
             )
             return
         if button_id == BUTTON_ID_CTRL_Z:
-            self._send_to_target(lambda: keyboard.send("ctrl+z"))
+            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_Z))
             return
         if button_id == BUTTON_ID_CTRL_X:
-            self._send_to_target(lambda: keyboard.send("ctrl+x"))
+            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_X))
             return
         if button_id == BUTTON_ID_CTRL_C:
-            self._send_to_target(lambda: keyboard.send("ctrl+c"))
+            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_C))
             return
         if button_id == BUTTON_ID_CTRL_V:
-            self._send_to_target(lambda: keyboard.send("ctrl+v"))
+            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_V))
             return
         if button_id == BUTTON_ID_CTRL_Y:
-            self._send_to_target(lambda: keyboard.send("ctrl+y"))
+            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_Y))
             return
         if button_id == BUTTON_ID_UP:
             self._send_arrow("up")
@@ -578,26 +638,40 @@ class ShortcutPanel:
             return
         if button_id == BUTTON_ID_HIDE:
             self.hide_to_tray()
+            return
+        if button_id == BUTTON_ID_QUIT:
+            self.quit_app()
 
     def _send_ctrl_win(self):
-        keyboard.press("ctrl")
-        keyboard.press("windows")
-        keyboard.release("windows")
-        keyboard.release("ctrl")
+        self._send_hotkey(VK_CONTROL, VK_LWIN)
 
     def _send_arrow(self, direction: str):
+        vk_map = {
+            "up": VK_UP,
+            "left": VK_LEFT,
+            "down": VK_DOWN,
+            "right": VK_RIGHT,
+        }
+
         def action():
             if self.ctrl_shift_checked:
-                keyboard.press("ctrl")
-                keyboard.press("shift")
-                keyboard.press(direction)
-                keyboard.release(direction)
-                keyboard.release("shift")
-                keyboard.release("ctrl")
+                self._send_hotkey(VK_CONTROL, VK_SHIFT, vk_map[direction])
             else:
-                keyboard.send(direction)
+                self._send_hotkey(vk_map[direction])
 
         self._send_to_target(action)
+
+    def _send_hotkey(self, *virtual_keys: int):
+        inputs = []
+        for virtual_key in virtual_keys:
+            inputs.append(make_key_input(virtual_key))
+        for virtual_key in reversed(virtual_keys):
+            inputs.append(make_key_input(virtual_key, KEYEVENTF_KEYUP))
+
+        input_array = (INPUT * len(inputs))(*inputs)
+        sent = user32.SendInput(len(inputs), input_array, ctypes.sizeof(INPUT))
+        if sent != len(inputs):
+            raise ctypes.WinError()
 
     def pump_ui_queue(self):
         try:
@@ -615,7 +689,10 @@ class ShortcutPanel:
             return 0
         if msg == WM_COMMAND:
             if hiword(wparam) == BN_CLICKED:
-                self._handle_button(loword(wparam))
+                try:
+                    self._handle_button(loword(wparam))
+                except Exception as exc:
+                    print(f"Button handler failed: {exc}", file=sys.stderr)
                 return 0
         if msg == WM_CLOSE:
             self.hide_to_tray()
