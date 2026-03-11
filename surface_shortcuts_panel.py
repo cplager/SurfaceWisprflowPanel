@@ -107,10 +107,11 @@ COLOR_BTNFACE = 15
 MA_NOACTIVATE = 3
 
 INPUT_KEYBOARD = 1
+KEYEVENTF_EXTENDEDKEY = 0x0001
 KEYEVENTF_KEYUP = 0x0002
 
-VK_CONTROL = 0x11
-VK_SHIFT = 0x10
+VK_LCONTROL = 0xA2
+VK_LSHIFT = 0xA0
 VK_LWIN = 0x5B
 VK_LEFT = 0x25
 VK_UP = 0x26
@@ -124,6 +125,7 @@ VK_Z = 0x5A
 
 DT_CALCRECT = 0x00000400
 DEFAULT_GUI_FONT = 17
+MAPVK_VK_TO_VSC = 0
 SM_CYCAPTION = 4
 
 CW_USEDEFAULT = 0x80000000
@@ -237,6 +239,8 @@ user32.GetSystemMetrics.argtypes = [ctypes.c_int]
 user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 user32.DestroyWindow.argtypes = [wintypes.HWND]
 user32.keybd_event.argtypes = [wintypes.BYTE, wintypes.BYTE, wintypes.DWORD, wintypes.ULONG_PTR]
+user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
+user32.MapVirtualKeyW.restype = wintypes.UINT
 gdi32.CreateFontW.restype = wintypes.HFONT
 gdi32.CreateFontW.argtypes = [
     ctypes.c_int,
@@ -573,19 +577,19 @@ class ShortcutPanel:
             )
             return
         if button_id == BUTTON_ID_CTRL_Z:
-            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_Z))
+            self._send_to_target(lambda: self._send_hotkey(VK_LCONTROL, VK_Z))
             return
         if button_id == BUTTON_ID_CTRL_X:
-            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_X))
+            self._send_to_target(lambda: self._send_hotkey(VK_LCONTROL, VK_X))
             return
         if button_id == BUTTON_ID_CTRL_C:
-            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_C))
+            self._send_to_target(lambda: self._send_hotkey(VK_LCONTROL, VK_C))
             return
         if button_id == BUTTON_ID_CTRL_V:
-            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_V))
+            self._send_to_target(lambda: self._send_hotkey(VK_LCONTROL, VK_V))
             return
         if button_id == BUTTON_ID_CTRL_Y:
-            self._send_to_target(lambda: self._send_hotkey(VK_CONTROL, VK_Y))
+            self._send_to_target(lambda: self._send_hotkey(VK_LCONTROL, VK_Y))
             return
         if button_id == BUTTON_ID_UP:
             self._send_arrow("up")
@@ -606,7 +610,7 @@ class ShortcutPanel:
             self.quit_app()
 
     def _send_ctrl_win(self):
-        self._send_hotkey(VK_CONTROL, VK_LWIN)
+        self._send_hotkey(VK_LCONTROL, VK_LWIN)
 
     def _send_arrow(self, direction: str):
         vk_map = {
@@ -618,7 +622,7 @@ class ShortcutPanel:
 
         def action():
             if self.ctrl_shift_checked:
-                self._send_hotkey(VK_CONTROL, VK_SHIFT, vk_map[direction])
+                self._send_hotkey(VK_LCONTROL, VK_LSHIFT, vk_map[direction])
             else:
                 self._send_hotkey(vk_map[direction])
 
@@ -626,9 +630,20 @@ class ShortcutPanel:
 
     def _send_hotkey(self, *virtual_keys: int):
         for virtual_key in virtual_keys:
-            user32.keybd_event(virtual_key, 0, 0, 0)
+            self._send_key_event(virtual_key, key_up=False)
+            time.sleep(0.01)
         for virtual_key in reversed(virtual_keys):
-            user32.keybd_event(virtual_key, 0, KEYEVENTF_KEYUP, 0)
+            self._send_key_event(virtual_key, key_up=True)
+            time.sleep(0.01)
+
+    def _send_key_event(self, virtual_key: int, key_up: bool):
+        scan_code = user32.MapVirtualKeyW(virtual_key, MAPVK_VK_TO_VSC)
+        flags = 0
+        if virtual_key in {VK_LWIN, VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN}:
+            flags |= KEYEVENTF_EXTENDEDKEY
+        if key_up:
+            flags |= KEYEVENTF_KEYUP
+        user32.keybd_event(virtual_key, scan_code, flags, 0)
 
     def pump_ui_queue(self):
         try:
