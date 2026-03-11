@@ -31,8 +31,8 @@ This package contains a small always-on-top Windows utility panel designed for t
 Open Command Prompt or PowerShell in this folder and run:
 
 ```bat
-py -m pip install -r requirements.txt
-py surface_shortcuts_panel.py
+pip install -r requirements.txt
+python surface_shortcuts_panel.py
 ```
 
 ## Build a standalone EXE
