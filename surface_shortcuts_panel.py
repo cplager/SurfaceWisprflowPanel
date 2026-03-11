@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, Menu
+from tkinter import ttk
 import threading
 import queue
 import sys
@@ -225,7 +225,7 @@ class ShortcutPanel:
         def on_exit(icon, item):
             self.ui_queue.put(self.quit_app)
 
-        menu = Menu(
+        menu = pystray.Menu(
             pystray.MenuItem("Show", on_show),
             pystray.MenuItem("Exit", on_exit),
         )
