@@ -508,7 +508,7 @@ class ShortcutPanel:
         button_h = self._button_height_px()
         label_h = self._scaled_int(int(self.config.get("font_size", 11)) + 10)
 
-        top_y = padding + label_h
+        top_y = padding
         edit_label_y = top_y + button_h + pady + self._scaled_int(8)
         edit_y = edit_label_y + label_h
         arrows_label_y = edit_y + button_h + pady + self._scaled_int(8)
@@ -599,7 +599,6 @@ class ShortcutPanel:
         height = (
             padding * 2
             + user32.GetSystemMetrics(SM_CYCAPTION)
-            + label_h
             + button_h
             + pady
             + self._scaled_int(8, scale)
@@ -612,6 +611,7 @@ class ShortcutPanel:
             + pady
             + self._scaled_int(12, scale)
             + button_h
+            + padding
         )
         return width, height
 
