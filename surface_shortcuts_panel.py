@@ -45,12 +45,16 @@ if not hasattr(wintypes, "LRESULT"):
     wintypes.LRESULT = ctypes.c_ssize_t
 if not hasattr(wintypes, "HCURSOR"):
     wintypes.HCURSOR = wintypes.HANDLE
+if not hasattr(wintypes, "HICON"):
+    wintypes.HICON = wintypes.HANDLE
 if not hasattr(wintypes, "HBRUSH"):
     wintypes.HBRUSH = wintypes.HANDLE
 if not hasattr(wintypes, "HGDIOBJ"):
     wintypes.HGDIOBJ = wintypes.HANDLE
 if not hasattr(wintypes, "HFONT"):
     wintypes.HFONT = wintypes.HANDLE
+if not hasattr(wintypes, "HMENU"):
+    wintypes.HMENU = wintypes.HANDLE
 
 WNDPROC = ctypes.WINFUNCTYPE(
     wintypes.LRESULT,
@@ -231,7 +235,6 @@ gdi32.CreateFontW.argtypes = [
 ]
 gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
 gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
-gdi32.DrawTextW.argtypes = [wintypes.HDC, wintypes.LPCWSTR, ctypes.c_int, ctypes.POINTER(RECT), wintypes.UINT]
 
 
 def get_base_dir() -> str:
