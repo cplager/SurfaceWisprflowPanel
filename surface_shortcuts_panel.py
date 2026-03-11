@@ -1,11 +1,17 @@
-import tkinter as tk
-from tkinter import ttk
-import threading
+import ctypes
+from ctypes import wintypes
+import json
+import os
 import queue
 import sys
-import os
-import json
-import ctypes
+import threading
+
+try:
+    import keyboard
+except ImportError as exc:
+    raise SystemExit(
+        "This app requires the 'keyboard' package. Install with: pip install keyboard pystray pillow"
+    ) from exc
 
 try:
     import pystray
@@ -14,13 +20,6 @@ except ImportError:
     pystray = None
     Image = None
     ImageDraw = None
-
-try:
-    import keyboard
-except ImportError as exc:
-    raise SystemExit(
-        "This app requires the 'keyboard' package. Install with: pip install keyboard pystray pillow"
-    ) from exc
 
 
 DEFAULT_CONFIG = {
@@ -37,11 +36,191 @@ DEFAULT_CONFIG = {
     "window_y": None,
 }
 
-if os.name == "nt":
-    GWL_EXSTYLE = -20
-    WS_EX_NOACTIVATE = 0x08000000
-    WS_EX_TOOLWINDOW = 0x00000080
-    SW_SHOWNOACTIVATE = 4
+
+user32 = ctypes.windll.user32
+gdi32 = ctypes.windll.gdi32
+kernel32 = ctypes.windll.kernel32
+
+WNDPROC = ctypes.WINFUNCTYPE(
+    wintypes.LRESULT,
+    wintypes.HWND,
+    wintypes.UINT,
+    wintypes.WPARAM,
+    wintypes.LPARAM,
+)
+
+WS_CHILD = 0x40000000
+WS_VISIBLE = 0x10000000
+WS_BORDER = 0x00800000
+WS_CAPTION = 0x00C00000
+WS_SYSMENU = 0x00080000
+WS_CLIPCHILDREN = 0x02000000
+WS_EX_TOPMOST = 0x00000008
+WS_EX_TOOLWINDOW = 0x00000080
+WS_EX_NOACTIVATE = 0x08000000
+
+BS_PUSHBUTTON = 0x00000000
+BS_AUTOCHECKBOX = 0x00000003
+BS_PUSHLIKE = 0x00001000
+
+SW_HIDE = 0
+SW_SHOWNOACTIVATE = 4
+SW_RESTORE = 9
+
+WM_DESTROY = 0x0002
+WM_CLOSE = 0x0010
+WM_COMMAND = 0x0111
+WM_SETFONT = 0x0030
+WM_MOUSEACTIVATE = 0x0021
+WM_CTLCOLORBTN = 0x0135
+WM_CTLCOLOREDIT = 0x0133
+WM_CTLCOLORSTATIC = 0x0138
+WM_APP = 0x8000
+WM_APP_QUEUE = WM_APP + 1
+
+BN_CLICKED = 0
+BM_GETCHECK = 0x00F0
+BM_SETCHECK = 0x00F1
+BST_UNCHECKED = 0
+BST_CHECKED = 1
+
+COLOR_WINDOW = 5
+COLOR_BTNFACE = 15
+MA_NOACTIVATE = 3
+
+DT_CALCRECT = 0x00000400
+DEFAULT_GUI_FONT = 17
+SM_CYCAPTION = 4
+
+CW_USEDEFAULT = 0x80000000
+
+BUTTON_ID_CTRL_WIN = 1001
+BUTTON_ID_CTRL_SHIFT = 1002
+BUTTON_ID_CTRL_Z = 1003
+BUTTON_ID_CTRL_X = 1004
+BUTTON_ID_CTRL_C = 1005
+BUTTON_ID_CTRL_V = 1006
+BUTTON_ID_CTRL_Y = 1007
+BUTTON_ID_UP = 1008
+BUTTON_ID_LEFT = 1009
+BUTTON_ID_DOWN = 1010
+BUTTON_ID_RIGHT = 1011
+BUTTON_ID_HIDE = 1012
+
+
+class RECT(ctypes.Structure):
+    _fields_ = [
+        ("left", wintypes.LONG),
+        ("top", wintypes.LONG),
+        ("right", wintypes.LONG),
+        ("bottom", wintypes.LONG),
+    ]
+
+
+class MSG(ctypes.Structure):
+    _fields_ = [
+        ("hwnd", wintypes.HWND),
+        ("message", wintypes.UINT),
+        ("wParam", wintypes.WPARAM),
+        ("lParam", wintypes.LPARAM),
+        ("time", wintypes.DWORD),
+        ("pt_x", wintypes.LONG),
+        ("pt_y", wintypes.LONG),
+        ("lPrivate", wintypes.DWORD),
+    ]
+
+
+class PAINTSTRUCT(ctypes.Structure):
+    _fields_ = [
+        ("hdc", wintypes.HDC),
+        ("fErase", wintypes.BOOL),
+        ("rcPaint", RECT),
+        ("fRestore", wintypes.BOOL),
+        ("fIncUpdate", wintypes.BOOL),
+        ("rgbReserved", ctypes.c_char * 32),
+    ]
+
+
+class WNDCLASSW(ctypes.Structure):
+    _fields_ = [
+        ("style", wintypes.UINT),
+        ("lpfnWndProc", WNDPROC),
+        ("cbClsExtra", ctypes.c_int),
+        ("cbWndExtra", ctypes.c_int),
+        ("hInstance", wintypes.HINSTANCE),
+        ("hIcon", wintypes.HICON),
+        ("hCursor", wintypes.HCURSOR),
+        ("hbrBackground", wintypes.HBRUSH),
+        ("lpszMenuName", wintypes.LPCWSTR),
+        ("lpszClassName", wintypes.LPCWSTR),
+    ]
+
+
+user32.DefWindowProcW.restype = wintypes.LRESULT
+user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
+user32.RegisterClassW.restype = wintypes.ATOM
+user32.CreateWindowExW.restype = wintypes.HWND
+user32.CreateWindowExW.argtypes = [
+    wintypes.DWORD,
+    wintypes.LPCWSTR,
+    wintypes.LPCWSTR,
+    wintypes.DWORD,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    wintypes.HWND,
+    wintypes.HMENU,
+    wintypes.HINSTANCE,
+    wintypes.LPVOID,
+]
+user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+user32.UpdateWindow.argtypes = [wintypes.HWND]
+user32.PostQuitMessage.argtypes = [ctypes.c_int]
+user32.GetMessageW.argtypes = [ctypes.POINTER(MSG), wintypes.HWND, wintypes.UINT, wintypes.UINT]
+user32.TranslateMessage.argtypes = [ctypes.POINTER(MSG)]
+user32.DispatchMessageW.argtypes = [ctypes.POINTER(MSG)]
+user32.SetWindowPos.argtypes = [
+    wintypes.HWND,
+    wintypes.HWND,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    wintypes.UINT,
+]
+user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
+user32.IsWindow.argtypes = [wintypes.HWND]
+user32.IsIconic.argtypes = [wintypes.HWND]
+user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.GetDC.argtypes = [wintypes.HWND]
+user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
+user32.GetSystemMetrics.argtypes = [ctypes.c_int]
+user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+user32.DestroyWindow.argtypes = [wintypes.HWND]
+gdi32.CreateFontW.restype = wintypes.HFONT
+gdi32.CreateFontW.argtypes = [
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    wintypes.DWORD,
+    wintypes.DWORD,
+    wintypes.DWORD,
+    wintypes.DWORD,
+    wintypes.DWORD,
+    wintypes.DWORD,
+    wintypes.DWORD,
+    wintypes.DWORD,
+    wintypes.LPCWSTR,
+]
+gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
+gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
+gdi32.DrawTextW.argtypes = [wintypes.HDC, wintypes.LPCWSTR, ctypes.c_int, ctypes.POINTER(RECT), wintypes.UINT]
 
 
 def get_base_dir() -> str:
@@ -58,8 +237,8 @@ def load_config() -> dict:
         return config
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            user_config = json.load(f)
+        with open(config_path, "r", encoding="utf-8") as handle:
+            user_config = json.load(handle)
         if isinstance(user_config, dict):
             config.update(user_config)
     except Exception:
@@ -68,171 +247,228 @@ def load_config() -> dict:
     return config
 
 
-class ShortcutPanel:
-    def __init__(self, root: tk.Tk, config: dict):
-        self.root = root
-        self.config = config
-        self.root.title("Touch Shortcuts")
-        self.root.attributes("-topmost", bool(self.config.get("topmost", True)))
-        self.root.resizable(False, False)
-        self.root.protocol("WM_DELETE_WINDOW", self.hide_to_tray)
+def loword(value: int) -> int:
+    return value & 0xFFFF
 
-        self.ctrl_shift_armed = False
+
+def hiword(value: int) -> int:
+    return (value >> 16) & 0xFFFF
+
+
+class ShortcutPanel:
+    CLASS_NAME = "SurfaceShortcutPanelWindow"
+
+    def __init__(self, config: dict):
+        self.config = config
+        self.hinstance = kernel32.GetModuleHandleW(None)
+        self.hwnd = None
+        self.font = None
         self.tray_icon = None
         self.ui_queue = queue.Queue()
+        self.last_target_hwnd = None
+        self.buttons = {}
+        self.ctrl_shift_checked = False
+        self.wndproc = WNDPROC(self._wndproc)
 
-        self._build_ui()
-        self._configure_window_behavior()
-        self._apply_window_position()
-        self._poll_ui_queue()
+        self._register_window_class()
+        self._create_window()
+        self._create_controls()
         self._setup_tray()
 
         if bool(self.config.get("start_hidden", False)):
-            self.root.after(150, self.hide_to_tray)
+            self.hide_to_tray()
+        else:
+            self.show_window()
 
-    def _build_ui(self):
-        container = ttk.Frame(self.root, padding=int(self.config.get("window_padding", 8)))
-        container.grid(row=0, column=0, sticky="nsew")
+    def _register_window_class(self):
+        wnd_class = WNDCLASSW()
+        wnd_class.style = 0
+        wnd_class.lpfnWndProc = self.wndproc
+        wnd_class.cbClsExtra = 0
+        wnd_class.cbWndExtra = 0
+        wnd_class.hInstance = self.hinstance
+        wnd_class.hIcon = None
+        wnd_class.hCursor = user32.LoadCursorW(None, ctypes.c_wchar_p(32512))
+        wnd_class.hbrBackground = user32.GetSysColorBrush(COLOR_WINDOW)
+        wnd_class.lpszMenuName = None
+        wnd_class.lpszClassName = self.CLASS_NAME
+        atom = user32.RegisterClassW(ctypes.byref(wnd_class))
+        if atom == 0 and ctypes.GetLastError() != 1410:
+            raise ctypes.WinError()
 
-        style = ttk.Style()
-        try:
-            style.theme_use("vista")
-        except Exception:
-            pass
-
-        top = ttk.Frame(container)
-        top.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-
-        self._make_button(top, "Ctrl+Win", self.send_ctrl_win, 0, 0, width=12)
-        self.ctrl_shift_btn = self._make_button(top, "Ctrl+Shift", self.toggle_ctrl_shift, 0, 1, width=12)
-
-        edit = ttk.LabelFrame(container, text="Edit")
-        edit.grid(row=1, column=0, sticky="ew", pady=(0, 8))
-
-        shortcuts = [
-            ("Ctrl+Z", "ctrl+z"),
-            ("Ctrl+X", "ctrl+x"),
-            ("Ctrl+C", "ctrl+c"),
-            ("Ctrl+V", "ctrl+v"),
-            ("Ctrl+Y", "ctrl+y"),
-        ]
-        for col, (label, combo) in enumerate(shortcuts):
-            self._make_button(edit, label, lambda c=combo: self.send_combo(c), 0, col, width=9)
-
-        arrows = ttk.LabelFrame(container, text="Arrows")
-        arrows.grid(row=2, column=0, sticky="ew")
-
-        self._make_button(arrows, "↑", lambda: self.send_arrow("up"), 0, 1, width=6)
-        self._make_button(arrows, "←", lambda: self.send_arrow("left"), 1, 0, width=6)
-        self._make_button(arrows, "↓", lambda: self.send_arrow("down"), 1, 1, width=6)
-        self._make_button(arrows, "→", lambda: self.send_arrow("right"), 1, 2, width=6)
-
-        bottom = ttk.Frame(container)
-        bottom.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self._make_button(bottom, "Hide", self.hide_to_tray, 0, 0, width=10)
-
-        for i in range(5):
-            edit.grid_columnconfigure(i, weight=1)
-        for i in range(3):
-            arrows.grid_columnconfigure(i, weight=1)
-
-    def _configure_window_behavior(self):
-        if os.name != "nt":
-            return
-
-        # Mark the window as non-activating so tapping its buttons does not
-        # steal focus from the app currently receiving keyboard input.
-        self.root.update_idletasks()
-        hwnd = self.root.winfo_id()
-        ex_style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-        ctypes.windll.user32.SetWindowLongW(
-            hwnd,
-            GWL_EXSTYLE,
-            ex_style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
-        )
-
-    def _make_button(self, parent, text, command, row, col, width=None):
-        btn = tk.Button(
-            parent,
-            text=text,
-            command=command,
-            takefocus=0,
-            width=int(width if width is not None else self.config.get("button_width", 10)),
-            height=int(self.config.get("button_height", 2)),
-            font=(
-                str(self.config.get("font_family", "Segoe UI")),
-                int(self.config.get("font_size", 11)),
-            ),
-        )
-        btn.grid(
-            row=row,
-            column=col,
-            padx=int(self.config.get("button_padx", 4)),
-            pady=int(self.config.get("button_pady", 4)),
-            sticky="nsew",
-        )
-        return btn
-
-    def _apply_window_position(self):
+    def _create_window(self):
+        width, height = self._compute_window_size()
         x = self.config.get("window_x")
         y = self.config.get("window_y")
-        if x is None or y is None:
-            return
-        try:
-            self.root.geometry(f"+{int(x)}+{int(y)}")
-        except Exception:
-            pass
+        if x is None:
+            x = CW_USEDEFAULT
+        if y is None:
+            y = CW_USEDEFAULT
 
-    def send_combo(self, combo: str):
-        keyboard.send(combo)
+        ex_style = WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
+        if bool(self.config.get("topmost", True)):
+            ex_style |= WS_EX_TOPMOST
 
-    def send_ctrl_win(self):
-        keyboard.press("ctrl")
-        keyboard.press("windows")
-        keyboard.release("windows")
-        keyboard.release("ctrl")
+        self.hwnd = user32.CreateWindowExW(
+            ex_style,
+            self.CLASS_NAME,
+            "Touch Shortcuts",
+            WS_CAPTION | WS_SYSMENU | WS_BORDER | WS_CLIPCHILDREN,
+            int(x),
+            int(y),
+            width,
+            height,
+            None,
+            None,
+            self.hinstance,
+            None,
+        )
+        if not self.hwnd:
+            raise ctypes.WinError()
 
-    def toggle_ctrl_shift(self):
-        self.ctrl_shift_armed = not self.ctrl_shift_armed
-        self.ctrl_shift_btn.configure(
-            relief=tk.SUNKEN if self.ctrl_shift_armed else tk.RAISED,
-            bg="#b7d7ff" if self.ctrl_shift_armed else "SystemButtonFace",
+        if bool(self.config.get("topmost", True)):
+            user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002)
+
+    def _create_controls(self):
+        font_name = str(self.config.get("font_family", "Segoe UI"))
+        font_size = int(self.config.get("font_size", 11))
+        hdc = user32.GetDC(self.hwnd)
+        dpi = gdi32.GetDeviceCaps(hdc, 90)
+        user32.ReleaseDC(self.hwnd, hdc)
+        font_height = -int(font_size * dpi / 72)
+        self.font = gdi32.CreateFontW(
+            font_height,
+            0,
+            0,
+            0,
+            400,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            font_name,
         )
 
-    def send_arrow(self, direction: str):
-        if self.ctrl_shift_armed:
-            keyboard.press("ctrl")
-            keyboard.press("shift")
-            keyboard.press(direction)
-            keyboard.release(direction)
-            keyboard.release("shift")
-            keyboard.release("ctrl")
-        else:
-            keyboard.send(direction)
+        padding = int(self.config.get("window_padding", 8))
+        padx = int(self.config.get("button_padx", 4))
+        pady = int(self.config.get("button_pady", 4))
+        button_w = self._button_width_px()
+        button_h = self._button_height_px()
+        label_h = font_size + 10
 
-    def hide_to_tray(self):
-        self.root.withdraw()
+        top_y = padding + label_h
+        edit_label_y = top_y + button_h + pady + 8
+        edit_y = edit_label_y + label_h
+        arrows_label_y = edit_y + button_h + pady + 8
+        arrows_y = arrows_label_y + label_h
+        hide_y = arrows_y + (button_h * 2) + pady + 12
 
-    def show_window(self):
-        self.root.deiconify()
-        self.root.attributes("-topmost", bool(self.config.get("topmost", True)))
-        if os.name == "nt":
-            ctypes.windll.user32.ShowWindow(self.root.winfo_id(), SW_SHOWNOACTIVATE)
-        self.root.lift()
+        self._make_button(BUTTON_ID_CTRL_WIN, "Ctrl+Win", padding, top_y, button_w, button_h)
+        self._make_button(BUTTON_ID_CTRL_SHIFT, "Ctrl+Shift", padding + button_w + padx, top_y, button_w, button_h, toggle=True)
 
-    def quit_app(self):
-        if self.tray_icon:
-            self.tray_icon.stop()
-        self.root.after(0, self.root.destroy)
+        edit_labels = [
+            (BUTTON_ID_CTRL_Z, "Ctrl+Z"),
+            (BUTTON_ID_CTRL_X, "Ctrl+X"),
+            (BUTTON_ID_CTRL_C, "Ctrl+C"),
+            (BUTTON_ID_CTRL_V, "Ctrl+V"),
+            (BUTTON_ID_CTRL_Y, "Ctrl+Y"),
+        ]
+        for index, (button_id, text) in enumerate(edit_labels):
+            x = padding + index * (button_w + padx)
+            self._make_button(button_id, text, x, edit_y, button_w, button_h)
 
-    def _poll_ui_queue(self):
-        try:
-            while True:
-                action = self.ui_queue.get_nowait()
-                action()
-        except queue.Empty:
-            pass
-        self.root.after(100, self._poll_ui_queue)
+        arrow_x = padding + button_w
+        self._make_button(BUTTON_ID_UP, "Up", arrow_x, arrows_y, button_w, button_h)
+        self._make_button(BUTTON_ID_LEFT, "Left", padding, arrows_y + button_h + pady, button_w, button_h)
+        self._make_button(BUTTON_ID_DOWN, "Down", arrow_x, arrows_y + button_h + pady, button_w, button_h)
+        self._make_button(BUTTON_ID_RIGHT, "Right", padding + (button_w + padx) * 2, arrows_y + button_h + pady, button_w, button_h)
+        self._make_button(BUTTON_ID_HIDE, "Hide", padding, hide_y, button_w, button_h)
+
+        labels = [
+            ("Edit", padding, edit_label_y),
+            ("Arrows", padding, arrows_label_y),
+        ]
+        for text, x, y in labels:
+            self._make_static(text, x, y, 120, label_h)
+
+    def _make_button(self, button_id: int, text: str, x: int, y: int, width: int, height: int, toggle: bool = False):
+        style = WS_CHILD | WS_VISIBLE
+        style |= BS_AUTOCHECKBOX | BS_PUSHLIKE if toggle else BS_PUSHBUTTON
+        hwnd = user32.CreateWindowExW(
+            0,
+            "BUTTON",
+            text,
+            style,
+            x,
+            y,
+            width,
+            height,
+            self.hwnd,
+            button_id,
+            self.hinstance,
+            None,
+        )
+        if not hwnd:
+            raise ctypes.WinError()
+        user32.SendMessageW(hwnd, WM_SETFONT, self.font, 1)
+        self.buttons[button_id] = hwnd
+
+    def _make_static(self, text: str, x: int, y: int, width: int, height: int):
+        hwnd = user32.CreateWindowExW(
+            0,
+            "STATIC",
+            text,
+            WS_CHILD | WS_VISIBLE,
+            x,
+            y,
+            width,
+            height,
+            self.hwnd,
+            None,
+            self.hinstance,
+            None,
+        )
+        if hwnd:
+            user32.SendMessageW(hwnd, WM_SETFONT, self.font, 1)
+
+    def _compute_window_size(self):
+        padding = int(self.config.get("window_padding", 8))
+        pady = int(self.config.get("button_pady", 4))
+        button_h = self._button_height_px()
+        label_h = int(self.config.get("font_size", 11)) + 10
+        width = padding * 2 + self._button_width_px() * 5 + int(self.config.get("button_padx", 4)) * 4
+        height = (
+            padding * 2
+            + user32.GetSystemMetrics(SM_CYCAPTION)
+            + label_h
+            + button_h
+            + pady
+            + 8
+            + label_h
+            + button_h
+            + pady
+            + 8
+            + label_h
+            + button_h * 2
+            + pady
+            + 12
+            + button_h
+        )
+        return width, height
+
+    def _button_width_px(self):
+        width_units = int(self.config.get("button_width", 10))
+        font_size = int(self.config.get("font_size", 11))
+        return max(70, width_units * max(7, font_size // 2 + 2))
+
+    def _button_height_px(self):
+        height_units = int(self.config.get("button_height", 2))
+        font_size = int(self.config.get("font_size", 11))
+        return max(36, height_units * (font_size + 10))
 
     def _setup_tray(self):
         if pystray is None or Image is None or ImageDraw is None:
@@ -240,16 +476,18 @@ class ShortcutPanel:
 
         def create_image():
             image = Image.new("RGB", (64, 64), color=(30, 30, 30))
-            dc = ImageDraw.Draw(image)
-            dc.rounded_rectangle((8, 8, 56, 56), radius=10, fill=(70, 130, 180))
-            dc.text((18, 20), "KB", fill=(255, 255, 255))
+            draw = ImageDraw.Draw(image)
+            draw.rounded_rectangle((8, 8, 56, 56), radius=10, fill=(70, 130, 180))
+            draw.text((18, 20), "KB", fill=(255, 255, 255))
             return image
 
         def on_show(icon, item):
             self.ui_queue.put(self.show_window)
+            user32.PostMessageW(self.hwnd, WM_APP_QUEUE, 0, 0)
 
         def on_exit(icon, item):
             self.ui_queue.put(self.quit_app)
+            user32.PostMessageW(self.hwnd, WM_APP_QUEUE, 0, 0)
 
         menu = pystray.Menu(
             pystray.MenuItem("Show", on_show),
@@ -258,12 +496,145 @@ class ShortcutPanel:
         self.tray_icon = pystray.Icon("touch_shortcuts", create_image(), "Touch Shortcuts", menu)
         threading.Thread(target=self.tray_icon.run, daemon=True).start()
 
+    def show_window(self):
+        user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE)
+        if bool(self.config.get("topmost", True)):
+            user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002)
+
+    def hide_to_tray(self):
+        user32.ShowWindow(self.hwnd, SW_HIDE)
+
+    def quit_app(self):
+        if self.tray_icon:
+            self.tray_icon.stop()
+        user32.DestroyWindow(self.hwnd)
+
+    def _remember_target_window(self):
+        foreground = user32.GetForegroundWindow()
+        if foreground and foreground != self.hwnd:
+            self.last_target_hwnd = foreground
+
+    def _restore_target_window(self):
+        hwnd = self.last_target_hwnd
+        if not hwnd or not user32.IsWindow(hwnd):
+            return
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
+        user32.SetForegroundWindow(hwnd)
+
+    def _send_to_target(self, action):
+        self._restore_target_window()
+        action()
+
+    def _handle_button(self, button_id: int):
+        if button_id == BUTTON_ID_CTRL_WIN:
+            self._send_to_target(self._send_ctrl_win)
+            return
+        if button_id == BUTTON_ID_CTRL_SHIFT:
+            self.ctrl_shift_checked = bool(
+                user32.SendMessageW(self.buttons[BUTTON_ID_CTRL_SHIFT], BM_GETCHECK, 0, 0) == BST_CHECKED
+            )
+            return
+        if button_id == BUTTON_ID_CTRL_Z:
+            self._send_to_target(lambda: keyboard.send("ctrl+z"))
+            return
+        if button_id == BUTTON_ID_CTRL_X:
+            self._send_to_target(lambda: keyboard.send("ctrl+x"))
+            return
+        if button_id == BUTTON_ID_CTRL_C:
+            self._send_to_target(lambda: keyboard.send("ctrl+c"))
+            return
+        if button_id == BUTTON_ID_CTRL_V:
+            self._send_to_target(lambda: keyboard.send("ctrl+v"))
+            return
+        if button_id == BUTTON_ID_CTRL_Y:
+            self._send_to_target(lambda: keyboard.send("ctrl+y"))
+            return
+        if button_id == BUTTON_ID_UP:
+            self._send_arrow("up")
+            return
+        if button_id == BUTTON_ID_LEFT:
+            self._send_arrow("left")
+            return
+        if button_id == BUTTON_ID_DOWN:
+            self._send_arrow("down")
+            return
+        if button_id == BUTTON_ID_RIGHT:
+            self._send_arrow("right")
+            return
+        if button_id == BUTTON_ID_HIDE:
+            self.hide_to_tray()
+
+    def _send_ctrl_win(self):
+        keyboard.press("ctrl")
+        keyboard.press("windows")
+        keyboard.release("windows")
+        keyboard.release("ctrl")
+
+    def _send_arrow(self, direction: str):
+        def action():
+            if self.ctrl_shift_checked:
+                keyboard.press("ctrl")
+                keyboard.press("shift")
+                keyboard.press(direction)
+                keyboard.release(direction)
+                keyboard.release("shift")
+                keyboard.release("ctrl")
+            else:
+                keyboard.send(direction)
+
+        self._send_to_target(action)
+
+    def pump_ui_queue(self):
+        try:
+            while True:
+                action = self.ui_queue.get_nowait()
+                action()
+        except queue.Empty:
+            pass
+
+    def _wndproc(self, hwnd, msg, wparam, lparam):
+        if msg == WM_MOUSEACTIVATE:
+            return MA_NOACTIVATE
+        if msg == WM_APP_QUEUE:
+            self.pump_ui_queue()
+            return 0
+        if msg == WM_COMMAND:
+            if hiword(wparam) == BN_CLICKED:
+                self._handle_button(loword(wparam))
+                return 0
+        if msg == WM_CLOSE:
+            self.hide_to_tray()
+            return 0
+        if msg == WM_DESTROY:
+            user32.PostQuitMessage(0)
+            return 0
+        if msg in (WM_CTLCOLORBTN, WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT):
+            return user32.GetSysColorBrush(COLOR_BTNFACE if msg == WM_CTLCOLORBTN else COLOR_WINDOW)
+        return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+    def run(self):
+        msg = MSG()
+        while True:
+            self.pump_ui_queue()
+            self._remember_target_window()
+            result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+            if result == 0:
+                break
+            if result == -1:
+                raise ctypes.WinError()
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
+
+        if self.font:
+            gdi32.DeleteObject(self.font)
+
 
 def main():
-    root = tk.Tk()
-    config = load_config()
-    ShortcutPanel(root, config)
-    root.mainloop()
+    if os.name != "nt":
+        raise SystemExit("This app currently supports Windows only.")
+    panel = ShortcutPanel(load_config())
+    panel.run()
 
 
 if __name__ == "__main__":
