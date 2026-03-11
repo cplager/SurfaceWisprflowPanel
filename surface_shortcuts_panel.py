@@ -451,22 +451,22 @@ class ShortcutPanel:
         self._make_button(BUTTON_ID_CTRL_SHIFT, "Ctrl+Shift", padding + button_w + padx, top_y, button_w, button_h, toggle=True)
 
         edit_labels = [
-            (BUTTON_ID_CTRL_Z, "Ctrl+Z"),
-            (BUTTON_ID_CTRL_X, "Ctrl+X"),
-            (BUTTON_ID_CTRL_C, "Ctrl+C"),
-            (BUTTON_ID_CTRL_V, "Ctrl+V"),
-            (BUTTON_ID_CTRL_Y, "Ctrl+Y"),
+            (BUTTON_ID_CTRL_Z, "Undo"),
+            (BUTTON_ID_CTRL_Y, "Redo"),
+            (BUTTON_ID_CTRL_X, "Cut"),
+            (BUTTON_ID_CTRL_C, "Copy"),
+            (BUTTON_ID_CTRL_V, "Paste"),
         ]
         for index, (button_id, text) in enumerate(edit_labels):
             x = padding + index * (button_w + padx)
             self._make_button(button_id, text, x, edit_y, button_w, button_h)
 
         arrow_x = padding + button_w
-        self._make_button(BUTTON_ID_UP, "Up", arrow_x, arrows_y, button_w, button_h)
-        self._make_button(BUTTON_ID_LEFT, "Left", padding, arrows_y + button_h + pady, button_w, button_h)
-        self._make_button(BUTTON_ID_DOWN, "Down", arrow_x, arrows_y + button_h + pady, button_w, button_h)
-        self._make_button(BUTTON_ID_RIGHT, "Right", padding + (button_w + padx) * 2, arrows_y + button_h + pady, button_w, button_h)
-        self._make_button(BUTTON_ID_ENTER, "Enter", padding, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_UP, "↑", arrow_x, arrows_y, button_w, button_h)
+        self._make_button(BUTTON_ID_LEFT, "←", padding, arrows_y + button_h + pady, button_w, button_h)
+        self._make_button(BUTTON_ID_DOWN, "↓", arrow_x, arrows_y + button_h + pady, button_w, button_h)
+        self._make_button(BUTTON_ID_RIGHT, "→", padding + (button_w + padx) * 2, arrows_y + button_h + pady, button_w, button_h)
+        self._make_button(BUTTON_ID_ENTER, "↵", padding, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_DELETE, "Delete", padding + button_w + padx, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_HIDE, "Hide", padding + (button_w + padx) * 2, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_QUIT, "Quit", padding + (button_w + padx) * 3, hide_y, button_w, button_h)
