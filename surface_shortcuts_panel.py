@@ -5,6 +5,7 @@ import queue
 import sys
 import os
 import json
+import ctypes
 
 try:
     import pystray
@@ -35,6 +36,12 @@ DEFAULT_CONFIG = {
     "window_x": None,
     "window_y": None,
 }
+
+if os.name == "nt":
+    GWL_EXSTYLE = -20
+    WS_EX_NOACTIVATE = 0x08000000
+    WS_EX_TOOLWINDOW = 0x00000080
+    SW_SHOWNOACTIVATE = 4
 
 
 def get_base_dir() -> str:
@@ -75,6 +82,7 @@ class ShortcutPanel:
         self.ui_queue = queue.Queue()
 
         self._build_ui()
+        self._configure_window_behavior()
         self._apply_window_position()
         self._poll_ui_queue()
         self._setup_tray()
@@ -128,11 +136,27 @@ class ShortcutPanel:
         for i in range(3):
             arrows.grid_columnconfigure(i, weight=1)
 
+    def _configure_window_behavior(self):
+        if os.name != "nt":
+            return
+
+        # Mark the window as non-activating so tapping its buttons does not
+        # steal focus from the app currently receiving keyboard input.
+        self.root.update_idletasks()
+        hwnd = self.root.winfo_id()
+        ex_style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        ctypes.windll.user32.SetWindowLongW(
+            hwnd,
+            GWL_EXSTYLE,
+            ex_style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
+        )
+
     def _make_button(self, parent, text, command, row, col, width=None):
         btn = tk.Button(
             parent,
             text=text,
             command=command,
+            takefocus=0,
             width=int(width if width is not None else self.config.get("button_width", 10)),
             height=int(self.config.get("button_height", 2)),
             font=(
@@ -191,8 +215,10 @@ class ShortcutPanel:
 
     def show_window(self):
         self.root.deiconify()
-        self.root.lift()
         self.root.attributes("-topmost", bool(self.config.get("topmost", True)))
+        if os.name == "nt":
+            ctypes.windll.user32.ShowWindow(self.root.winfo_id(), SW_SHOWNOACTIVATE)
+        self.root.lift()
 
     def quit_app(self):
         if self.tray_icon:
