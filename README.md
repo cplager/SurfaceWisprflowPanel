@@ -5,7 +5,7 @@ This package contains a small always-on-top Windows utility panel designed for t
 **Small Layout**<br>
 ![Small Layout](images/small.png)
 
-**Large Layout**
+**Large Layout**<br>
 ![Large Layout](images/large.png)
 
 ## Features
