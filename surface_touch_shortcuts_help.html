@@ -90,6 +90,7 @@
         <li><strong>Cut / Copy / Paste</strong><br>Sends standard edit shortcuts.</li>
         <li><strong>Arrow Keys</strong><br>Use the icon buttons for navigation.</li>
         <li><strong>Enter / Delete</strong><br>Useful for quick text cleanup after selection.</li>
+        <li><strong>Small-scale labels</strong><br>At very small sizes, some labels shorten automatically to keep the panel compact.</li>
         <li><strong>Hide</strong><br>Hides the panel to the system tray.</li>
         <li><strong>Quit</strong><br>Closes the app completely.</li>
       </ul>
@@ -97,7 +98,8 @@
 
     <section class="card">
       <h2>Configuration</h2>
-      <p>The app reads <code>touch_shortcuts_config.json</code> from the same folder as the executable. Supported startup settings include button sizes, font, padding, topmost behavior, start hidden, and initial window position.</p>
+      <p>The app reads <code>touch_shortcuts_config.json</code> from the same folder as the executable. Supported startup settings include <code>ui_scale</code>, button sizes, font, padding, topmost behavior, start hidden, and initial window position.</p>
+      <p>When you finish resizing the panel, the current <code>ui_scale</code> is saved back to the JSON file automatically.</p>
     </section>
 
     <section class="card">

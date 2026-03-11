@@ -13,11 +13,11 @@ This package contains a small always-on-top Windows utility panel designed for t
 - Buttons for:
   - Wispr Hold toggle
   - Ctrl+Shift toggle
-  - Ctrl+Z
-  - Ctrl+X
-  - Ctrl+C
-  - Ctrl+V
-  - Ctrl+Y
+  - Undo
+  - Redo
+  - Cut
+  - Copy
+  - Paste
   - Enter
   - Delete
   - Help
@@ -141,6 +141,8 @@ Example:
 ## Notes
 
 - `Wispr Hold` is a latch: tap once to hold `Ctrl+Win`, tap again to release it.
+- `Ctrl+Shift` is a latch for modified arrow navigation.
+- `Enter` has the same focus-preserving behavior as the other non-Wispr keys.
 - Drag-resizing scales the whole panel proportionally instead of stretching it.
 - When you finish resizing, the current `ui_scale` is saved back to `touch_shortcuts_config.json`.
 - At very small scales, a few long button labels switch to compact forms so the layout stays usable.
