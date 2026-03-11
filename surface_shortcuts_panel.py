@@ -278,6 +278,7 @@ user32.CreateWindowExW.argtypes = [
     wintypes.HINSTANCE,
     wintypes.LPVOID,
 ]
+user32.AdjustWindowRectEx.argtypes = [ctypes.POINTER(RECT), wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
 user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
 user32.UpdateWindow.argtypes = [wintypes.HWND]
 user32.PostQuitMessage.argtypes = [ctypes.c_int]
@@ -375,6 +376,7 @@ def hiword(value: int) -> int:
 
 class ShortcutPanel:
     CLASS_NAME = "SurfaceShortcutPanelWindow"
+    WINDOW_STYLE = WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN
 
     def __init__(self, config: dict):
         self.config = config
@@ -448,7 +450,7 @@ class ShortcutPanel:
             ex_style,
             self.CLASS_NAME,
             "Touch Shortcuts",
-            WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN,
+            self.WINDOW_STYLE,
             int(x),
             int(y),
             width,
@@ -636,10 +638,9 @@ class ShortcutPanel:
         pady = self._scaled_int(self.config.get("button_pady", 4), scale)
         button_h = self._button_height_px(scale)
         label_h = self._scaled_int(int(self.config.get("font_size", 11)) + 10, scale)
-        width = padding * 2 + self._button_width_px(scale) * 5 + self._scaled_int(int(self.config.get("button_padx", 4)) * 4, scale)
-        height = (
+        client_width = padding * 2 + self._button_width_px(scale) * 5 + self._scaled_int(int(self.config.get("button_padx", 4)) * 4, scale)
+        client_height = (
             padding * 2
-            + user32.GetSystemMetrics(SM_CYCAPTION)
             + button_h
             + pady
             + self._scaled_int(8, scale)
@@ -654,7 +655,12 @@ class ShortcutPanel:
             + button_h
             + padding
         )
-        return width, height
+        rect = RECT(0, 0, client_width, client_height)
+        ex_style = WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
+        if bool(self.config.get("topmost", True)):
+            ex_style |= WS_EX_TOPMOST
+        user32.AdjustWindowRectEx(ctypes.byref(rect), self.WINDOW_STYLE, False, ex_style)
+        return rect.right - rect.left, rect.bottom - rect.top
 
     def _button_width_px(self, scale=None):
         width_units = int(self.config.get("button_width", 10))
