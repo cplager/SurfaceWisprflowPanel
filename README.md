@@ -73,6 +73,13 @@ Run `install_program_files.bat` from that package folder to copy everything into
 C:\Program Files\Surface Touch Shortcuts
 ```
 
+The installer script is architecture-neutral. If the package contains:
+
+- `surface_touch_shortcuts_x64.exe`, it installs that build
+- `surface_touch_shortcuts_arm64.exe`, it installs that build
+
+No installer changes are needed between x64 and ARM64 packages.
+
 The installer also creates:
 
 - a Start Menu folder with app, help, and uninstall shortcuts
