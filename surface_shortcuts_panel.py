@@ -24,7 +24,7 @@ except ImportError:
 
 
 DEFAULT_CONFIG = {
-    "ui_scale": 1.0,
+    "ui_scale": 0.175,
     "button_width": 10,
     "button_height": 2,
     "font_family": "Segoe UI",
@@ -34,8 +34,8 @@ DEFAULT_CONFIG = {
     "button_pady": 4,
     "topmost": True,
     "start_hidden": False,
-    "window_x": None,
-    "window_y": None,
+    "window_x": 0,
+    "window_y": 0,
 }
 
 
@@ -138,6 +138,8 @@ DT_CALCRECT = 0x00000400
 DEFAULT_GUI_FONT = 17
 MAPVK_VK_TO_VSC = 0
 SM_CYCAPTION = 4
+SM_CXSCREEN = 0
+SM_CYSCREEN = 1
 
 DT_CENTER = 0x00000001
 DT_VCENTER = 0x00000004
@@ -146,7 +148,7 @@ DT_SINGLELINE = 0x00000020
 ODS_SELECTED = 0x0001
 ODS_FOCUS = 0x0010
 
-MIN_UI_SCALE = 0.2
+MIN_UI_SCALE = 0.1
 MAX_UI_SCALE = 3.0
 
 WMSZ_LEFT = 1
@@ -392,7 +394,7 @@ class ShortcutPanel:
         self.is_rebuilding_ui = False
         self.pending_config_save = False
         self.base_window_width, self.base_window_height = self._compute_window_size(1.0)
-        self.min_window_width, self.min_window_height = self._compute_window_size(0.7)
+        self.min_window_width, self.min_window_height = self._compute_window_size(MIN_UI_SCALE)
         self.window_brush = gdi32.CreateSolidBrush(0x202020)
         self.button_brush = gdi32.CreateSolidBrush(0x343434)
         self.button_active_brush = gdi32.CreateSolidBrush(0x7A4B19)
@@ -434,6 +436,8 @@ class ShortcutPanel:
             x = CW_USEDEFAULT
         if y is None:
             y = CW_USEDEFAULT
+        if x != CW_USEDEFAULT and y != CW_USEDEFAULT:
+            x, y = self._normalize_window_position(int(x), int(y), width, height)
 
         ex_style = WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
         if bool(self.config.get("topmost", True)):
@@ -458,6 +462,13 @@ class ShortcutPanel:
 
         if bool(self.config.get("topmost", True)):
             user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002)
+
+    def _normalize_window_position(self, x: int, y: int, width: int, height: int):
+        screen_w = user32.GetSystemMetrics(SM_CXSCREEN)
+        screen_h = user32.GetSystemMetrics(SM_CYSCREEN)
+        max_x = max(0, screen_w - width)
+        max_y = max(0, screen_h - height)
+        return max(0, min(x, max_x)), max(0, min(y, max_y))
 
     def _create_controls(self):
         self._destroy_ui()

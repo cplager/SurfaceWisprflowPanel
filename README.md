@@ -109,7 +109,7 @@ Example:
 
 ```json
 {
-  "ui_scale": 1.0,
+  "ui_scale": 0.175,
   "button_width": 12,
   "button_height": 3,
   "font_family": "Segoe UI",
@@ -119,8 +119,8 @@ Example:
   "button_pady": 6,
   "topmost": true,
   "start_hidden": false,
-  "window_x": 1200,
-  "window_y": 120
+  "window_x": 0,
+  "window_y": 0
 }
 ```
 
@@ -129,7 +129,7 @@ Example:
 - `button_width`: approximate button width scaling
 - `button_height`: approximate button height scaling
 - `ui_scale`: proportional scale for the entire panel layout
-  Practical range in the current app is roughly `0.2` to `3.0`.
+  Practical range in the current app is roughly `0.1` to `3.0`.
 - `font_family`: button font family
 - `font_size`: button font size
 - `window_padding`: outer padding around the panel
@@ -147,6 +147,7 @@ Example:
 - `Enter` has the same focus-preserving behavior as the other non-Wispr keys.
 - Drag-resizing scales the whole panel proportionally instead of stretching it.
 - When you finish resizing, the current `ui_scale` is saved back to `touch_shortcuts_config.json`.
+- If the configured startup position would be off-screen, the app clamps it back onto the visible display.
 - At very small scales, a few long button labels switch to compact forms so the layout stays usable.
 - At the smallest scales, several labels abbreviate further so the panel can shrink without text collisions.
 - `button_width` and `button_height` are not exact pixel sizes.
