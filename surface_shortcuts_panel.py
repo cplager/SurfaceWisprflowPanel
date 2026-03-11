@@ -336,6 +336,7 @@ class ShortcutPanel:
         self.hinstance = kernel32.GetModuleHandleW(None)
         self.hwnd = None
         self.font = None
+        self.icon_font = None
         self.tray_icon = None
         self.ui_queue = queue.Queue()
         self.last_target_hwnd = None
@@ -432,6 +433,23 @@ class ShortcutPanel:
             0,
             font_name,
         )
+        icon_font_height = -int(font_size * 1.8 * dpi / 72)
+        self.icon_font = gdi32.CreateFontW(
+            icon_font_height,
+            0,
+            0,
+            0,
+            500,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            font_name,
+        )
 
         padding = int(self.config.get("window_padding", 8))
         padx = int(self.config.get("button_padx", 4))
@@ -461,15 +479,15 @@ class ShortcutPanel:
             x = padding + index * (button_w + padx)
             self._make_button(button_id, text, x, edit_y, button_w, button_h)
 
-        arrow_x = padding + button_w
-        self._make_button(BUTTON_ID_UP, "↑", arrow_x, arrows_y, button_w, button_h)
+        arrow_center_x = padding + button_w + padx
+        self._make_button(BUTTON_ID_UP, "↑", arrow_center_x, arrows_y, button_w, button_h)
         self._make_button(BUTTON_ID_LEFT, "←", padding, arrows_y + button_h + pady, button_w, button_h)
-        self._make_button(BUTTON_ID_DOWN, "↓", arrow_x, arrows_y + button_h + pady, button_w, button_h)
+        self._make_button(BUTTON_ID_DOWN, "↓", arrow_center_x, arrows_y + button_h + pady, button_w, button_h)
         self._make_button(BUTTON_ID_RIGHT, "→", padding + (button_w + padx) * 2, arrows_y + button_h + pady, button_w, button_h)
         self._make_button(BUTTON_ID_ENTER, "↵", padding, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_DELETE, "Delete", padding + button_w + padx, hide_y, button_w, button_h)
         self._make_button(BUTTON_ID_HIDE, "Hide", padding + (button_w + padx) * 2, hide_y, button_w, button_h)
-        self._make_button(BUTTON_ID_QUIT, "Quit", padding + (button_w + padx) * 3, hide_y, button_w, button_h)
+        self._make_button(BUTTON_ID_QUIT, "Quit", padding + (button_w + padx) * 4, hide_y, button_w, button_h)
 
         labels = [
             ("Edit", padding, edit_label_y),
@@ -749,6 +767,14 @@ class ShortcutPanel:
         user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.left, button_rect.top, button_rect.left + 1, button_rect.bottom)), self.border_brush)
         user32.FillRect(draw_item.hDC, ctypes.byref(RECT(button_rect.right - 1, button_rect.top, button_rect.right, button_rect.bottom)), self.border_brush)
 
+        text_font = self.icon_font if button_id in {
+            BUTTON_ID_UP,
+            BUTTON_ID_LEFT,
+            BUTTON_ID_DOWN,
+            BUTTON_ID_RIGHT,
+            BUTTON_ID_ENTER,
+        } else self.font
+        previous_font = gdi32.SelectObject(draw_item.hDC, text_font)
         gdi32.SetBkMode(draw_item.hDC, TRANSPARENT)
         gdi32.SetTextColor(draw_item.hDC, 0xFFFFFF)
         text_rect = RECT(
@@ -764,6 +790,7 @@ class ShortcutPanel:
             ctypes.byref(text_rect),
             DT_CENTER | DT_VCENTER | DT_SINGLELINE,
         )
+        gdi32.SelectObject(draw_item.hDC, previous_font)
 
     def _wndproc(self, hwnd, msg, wparam, lparam):
         if msg == WM_MOUSEACTIVATE:
@@ -810,6 +837,8 @@ class ShortcutPanel:
 
         if self.font:
             gdi32.DeleteObject(self.font)
+        if self.icon_font:
+            gdi32.DeleteObject(self.icon_font)
         for brush in (
             self.window_brush,
             self.button_brush,
