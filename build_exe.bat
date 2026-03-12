@@ -54,15 +54,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "PACKAGE_BASE=dist\surface_touch_shortcuts_%ARCH%_package"
-set "PACKAGE_DIR=%PACKAGE_BASE%"
-set /a PACKAGE_IDX=1
-:find_package_dir
+set "PACKAGE_DIR=dist\surface_touch_shortcuts_%ARCH%_package"
+
+REM Archive existing package if present
 if exist "%PACKAGE_DIR%" (
-    set "PACKAGE_DIR=%PACKAGE_BASE%_%PACKAGE_IDX%"
-    set /a PACKAGE_IDX+=1
-    goto :find_package_dir
+    for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value ^| find "="') do set "DT=%%I"
+    set "TIMESTAMP=%DT:~0,8%_%DT:~8,6%"
+    set "ARCHIVE_DIR=%PACKAGE_DIR%_%TIMESTAMP%"
+    echo Archiving existing package to %ARCHIVE_DIR%...
+    move "%PACKAGE_DIR%" "%ARCHIVE_DIR%" >nul
+    if errorlevel 1 (
+        echo Failed to archive existing package.
+        pause
+        exit /b 1
+    )
 )
+
 mkdir "%PACKAGE_DIR%"
 if errorlevel 1 (
     echo Failed to create package directory: %PACKAGE_DIR%
@@ -124,6 +131,5 @@ echo.
 echo Installable package folder:
 echo   %PACKAGE_DIR%
 echo.
-echo Run install_program_files.bat from that package folder to copy the EXE,
-echo default config, and help file into Program Files.
+echo Run install_program_files.bat from that package folder to install.
 pause
