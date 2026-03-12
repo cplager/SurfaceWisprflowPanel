@@ -305,6 +305,8 @@ user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
 user32.GetSystemMetrics.argtypes = [ctypes.c_int]
 user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 user32.DestroyWindow.argtypes = [wintypes.HWND]
+user32.IsWindowVisible.argtypes = [wintypes.HWND]
+user32.IsWindowVisible.restype = wintypes.BOOL
 user32.keybd_event.argtypes = [wintypes.BYTE, wintypes.BYTE, wintypes.DWORD, wintypes.ULONG_PTR]
 user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
 user32.MapVirtualKeyW.restype = wintypes.UINT
@@ -767,8 +769,16 @@ class ShortcutPanel:
             draw.text((18, 20), "KB", fill=(255, 255, 255))
             return image
 
+        def on_toggle(icon, item):
+            self.ui_queue.put(self.toggle_window)
+            user32.PostMessageW(self.hwnd, WM_APP_QUEUE, 0, 0)
+
         def on_show(icon, item):
             self.ui_queue.put(self.show_window)
+            user32.PostMessageW(self.hwnd, WM_APP_QUEUE, 0, 0)
+
+        def on_help(icon, item):
+            self.ui_queue.put(self.open_help)
             user32.PostMessageW(self.hwnd, WM_APP_QUEUE, 0, 0)
 
         def on_exit(icon, item):
@@ -776,16 +786,30 @@ class ShortcutPanel:
             user32.PostMessageW(self.hwnd, WM_APP_QUEUE, 0, 0)
 
         menu = pystray.Menu(
+            pystray.MenuItem("Show/Hide", on_toggle, default=True),
             pystray.MenuItem("Show", on_show),
+            pystray.MenuItem("Help", on_help),
             pystray.MenuItem("Exit", on_exit),
         )
         self.tray_icon = pystray.Icon("touch_shortcuts", create_image(), "Touch Shortcuts", menu)
+
+        def on_click(icon, button, pressed):
+            if pressed:
+                icon._show_menu()
+
+        self.tray_icon.on_click = on_click
         threading.Thread(target=self.tray_icon.run, daemon=True).start()
 
     def show_window(self):
         user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE)
         if bool(self.config.get("topmost", True)):
             user32.SetWindowPos(self.hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002)
+
+    def toggle_window(self):
+        if user32.IsWindowVisible(self.hwnd):
+            self.hide_to_tray()
+        else:
+            self.show_window()
 
     def hide_to_tray(self):
         if self.ctrl_win_held:

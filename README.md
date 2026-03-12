@@ -48,13 +48,19 @@ Open Command Prompt or PowerShell in this folder and run:
 
 ```bat
 pip install -r requirements.txt
-python surface_shortcuts_panel.py
 ```
 
 or
 
 ```bat
-setup_new_pixi_env keyboard_311 "python=3.11" keyboard pystray pillow pyinstaller 
+setup_new_pixi_env keyboard_311 "python=3.11" keyboard pystray pillow pyinstaller
+activate_env keyboard_311 
+```
+
+followed by 
+
+```bat
+python surface_shortcuts_panel.py
 ```
 
 ## Build a standalone EXE
