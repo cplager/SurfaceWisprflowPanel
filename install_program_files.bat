@@ -102,6 +102,15 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+if exist "%SOURCE_DIR%\images" (
+    if not exist "%INSTALL_DIR%\images" mkdir "%INSTALL_DIR%\images"
+    xcopy "%SOURCE_DIR%\images\*.*" "%INSTALL_DIR%\images\" /E /Y >nul
+    if errorlevel 1 (
+        echo Failed to copy images folder into %INSTALL_DIR%.
+        pause
+        exit /b 1
+    )
+)
 copy "%SOURCE_DIR%\uninstall_surface_touch_shortcuts.bat" "%INSTALL_DIR%\" /Y >nul
 if errorlevel 1 (
     echo Failed to copy uninstall_surface_touch_shortcuts.bat into %INSTALL_DIR%.

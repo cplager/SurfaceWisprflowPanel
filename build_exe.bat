@@ -88,6 +88,15 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+if exist "images" (
+    mkdir "%PACKAGE_DIR%\images" >nul 2>nul
+    xcopy "images\*.*" "%PACKAGE_DIR%\images\" /E /Y >nul
+    if errorlevel 1 (
+        echo Failed to copy images folder.
+        pause
+        exit /b 1
+    )
+)
 copy "install_program_files.bat" "%PACKAGE_DIR%\" >nul
 if errorlevel 1 (
     echo Failed to copy install_program_files.bat.
